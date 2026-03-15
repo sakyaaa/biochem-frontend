@@ -3,15 +3,8 @@ const API_URL =
   process.env.PUBLIC_API_URL ||
   "http://localhost/api";
 
-// --- Token helpers (клиентская сторона) ---
-export const getToken = (): string | null =>
-  typeof localStorage !== "undefined" ? localStorage.getItem("jwt_token") : null;
-
-export const setToken = (token: string): void =>
-  localStorage.setItem("jwt_token", token);
-
-export const clearToken = (): void =>
-  localStorage.removeItem("jwt_token");
+// Токен хранится в httpOnly cookie — JS не имеет к нему доступа.
+// Браузер отправляет его автоматически при credentials: "include".
 
 // --- Types ---
 export interface Author {
@@ -73,17 +66,18 @@ export interface ListResponse<T> {
 // --- Fetch helper ---
 async function apiFetch<T>(
   path: string,
-  options: RequestInit = {},
-  serverToken?: string
+  options: RequestInit = {}
 ): Promise<T> {
-  const token = serverToken ?? getToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(options.headers as Record<string, string>),
   };
 
-  const response = await fetch(`${API_URL}${path}`, { ...options, headers });
+  const response = await fetch(`${API_URL}${path}`, {
+    ...options,
+    headers,
+    credentials: "include",
+  });
 
   if (!response.ok) {
     const err = await response.json().catch(() => ({ error: response.statusText }));
@@ -111,20 +105,20 @@ export const api = {
     get: (id: number) =>
       apiFetch<{ data: Article }>(`/articles/${id}`),
 
-    create: (body: Partial<Article>, token: string) =>
+    create: (body: Partial<Article>) =>
       apiFetch<{ data: Article }>("/articles", {
         method: "POST",
         body: JSON.stringify({ article: body }),
-      }, token),
+      }),
 
-    update: (id: number, body: Partial<Article>, token: string) =>
+    update: (id: number, body: Partial<Article>) =>
       apiFetch<{ data: Article }>(`/articles/${id}`, {
         method: "PATCH",
         body: JSON.stringify({ article: body }),
-      }, token),
+      }),
 
-    delete: (id: number, token: string) =>
-      apiFetch<void>(`/articles/${id}`, { method: "DELETE" }, token),
+    delete: (id: number) =>
+      apiFetch<void>(`/articles/${id}`, { method: "DELETE" }),
   },
 
   sections: {
@@ -134,11 +128,11 @@ export const api = {
 
   comments: {
     list:   (articleId: number) => apiFetch<{ data: Comment[] }>(`/articles/${articleId}/comments`),
-    create: (articleId: number, body: string, token: string) =>
+    create: (articleId: number, body: string) =>
       apiFetch<{ data: Comment }>(`/articles/${articleId}/comments`, {
         method: "POST",
         body: JSON.stringify({ comment: { body } }),
-      }, token),
+      }),
   },
 
   auth: {
