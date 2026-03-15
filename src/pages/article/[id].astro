@@ -1,0 +1,128 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { api } from "../../services/api";
+import type { Article, Comment } from "../../services/api";
+
+const { id } = Astro.params;
+
+let article: Article | null = null;
+let comments: Comment[] = [];
+let error: string | null = null;
+
+try {
+  const [articleRes, commentsRes] = await Promise.all([
+    api.articles.get(Number(id)),
+    api.comments.list(Number(id)),
+  ]);
+  article = articleRes.data;
+  comments = commentsRes.data;
+} catch (e) {
+  error = "Статья не найдена";
+}
+
+const date = article
+  ? new Date(article.created_at).toLocaleDateString("ru-RU", {
+      day: "numeric", month: "long", year: "numeric"
+    })
+  : "";
+---
+
+<BaseLayout
+  title={article?.title ?? "Статья не найдена"}
+  description={article?.content.substring(0, 160)}
+>
+  {error || !article ? (
+    <div class="text-center py-20">
+      <h1 class="text-2xl font-semibold text-gray-700">Статья не найдена</h1>
+      <a href="/" class="mt-4 inline-block text-brand-500 hover:underline">← На главную</a>
+    </div>
+  ) : (
+    <div class="max-w-4xl mx-auto">
+      <!-- Хлебные крошки -->
+      <nav class="text-sm text-gray-500 mb-6 flex items-center gap-2">
+        <a href="/" class="hover:text-brand-500">Главная</a>
+        {article.section && (
+          <>
+            <span>/</span>
+            <a href={`/section/${article.section.slug}`} class="hover:text-brand-500">
+              {article.section.name}
+            </a>
+          </>
+        )}
+        <span>/</span>
+        <span class="text-gray-700 truncate max-w-xs">{article.title}</span>
+      </nav>
+
+      <!-- Заголовок статьи -->
+      <article class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div class="p-8">
+          {article.section && (
+            <a
+              href={`/section/${article.section.slug}`}
+              class="text-xs font-semibold text-brand-500 uppercase tracking-wider mb-3 inline-block hover:text-brand-700"
+            >
+              {article.section.name}
+            </a>
+          )}
+
+          <h1 class="text-3xl font-bold text-gray-900 leading-tight mb-4">
+            {article.title}
+          </h1>
+
+          <div class="flex items-center gap-4 text-sm text-gray-500 mb-6 pb-6 border-b border-gray-100">
+            <span class="font-medium text-gray-700">{article.author.name}</span>
+            <span>{date}</span>
+            <span>{article.views_count} просмотров</span>
+          </div>
+
+          <!-- Теги -->
+          {article.tags.length > 0 && (
+            <div class="flex gap-2 flex-wrap mb-6">
+              {article.tags.map(tag => (
+                <span class="px-3 py-1 text-xs bg-blue-50 text-blue-700 rounded-full border border-blue-100">
+                  {tag.name}
+                </span>
+              ))}
+            </div>
+          )}
+
+          <!-- Контент статьи -->
+          <div class="prose prose-slate max-w-none" set:html={article.content} />
+        </div>
+      </article>
+
+      <!-- Комментарии -->
+      <section class="mt-8">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">
+          Комментарии ({comments.length})
+        </h2>
+
+        {comments.length === 0 ? (
+          <p class="text-gray-500 text-sm">Комментариев пока нет. Будьте первым!</p>
+        ) : (
+          <div class="space-y-4">
+            {comments.map(comment => (
+              <div class="bg-white rounded-lg border border-gray-200 p-4">
+                <div class="flex items-center gap-2 mb-2">
+                  <span class="font-medium text-sm text-gray-800">{comment.user.name}</span>
+                  <span class="text-xs text-gray-400">
+                    {new Date(comment.created_at).toLocaleDateString("ru-RU")}
+                  </span>
+                </div>
+                <p class="text-sm text-gray-700 leading-relaxed">{comment.body}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <!-- Форма комментария (требует JS) -->
+        <div class="mt-6 bg-white rounded-lg border border-gray-200 p-6">
+          <h3 class="font-medium text-gray-800 mb-4">Оставить комментарий</h3>
+          <p class="text-sm text-gray-500">
+            Для комментирования необходимо <a href="/login" class="text-brand-500 hover:underline">войти</a>.
+          </p>
+        </div>
+      </section>
+    </div>
+  )}
+</BaseLayout>

@@ -1,0 +1,63 @@
+---
+import type { Article } from "../services/api";
+
+interface Props {
+  article: Article;
+}
+
+const { article } = Astro.props;
+
+const date = new Date(article.created_at).toLocaleDateString("ru-RU", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
+const excerpt = article.content.replace(/<[^>]*>/g, "").substring(0, 200);
+---
+
+<article class="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow">
+  <div class="flex flex-col gap-3">
+    {article.section && (
+      <div>
+        <a
+          href={`/section/${article.section.slug}`}
+          class="text-xs font-semibold text-brand-500 uppercase tracking-wider hover:text-brand-700"
+        >
+          {article.section.name}
+        </a>
+      </div>
+    )}
+
+    <h2 class="text-xl font-semibold text-gray-900 leading-snug">
+      <a href={`/article/${article.id}`} class="hover:text-brand-500 transition">
+        {article.title}
+      </a>
+    </h2>
+
+    <p class="text-gray-600 text-sm line-clamp-3 leading-relaxed">
+      {excerpt}…
+    </p>
+
+    {article.tags.length > 0 && (
+      <div class="flex gap-2 flex-wrap">
+        {article.tags.map(tag => (
+          <span class="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded-full">
+            {tag.name}
+          </span>
+        ))}
+      </div>
+    )}
+
+    <div class="flex items-center gap-4 text-xs text-gray-400 pt-1 border-t border-gray-100">
+      <span>{article.author.name}</span>
+      <span>{date}</span>
+      <span class="flex items-center gap-1">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+        </svg>
+        {article.views_count}
+      </span>
+    </div>
+  </div>
+</article>

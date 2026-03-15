@@ -1,0 +1,22 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="Панель управления">
+  <div class="max-w-4xl mx-auto">
+    <div class="flex items-center justify-between mb-8">
+      <h1 class="text-2xl font-bold text-gray-900">Панель управления</h1>
+      <a
+        href="/admin/articles/new"
+        class="bg-brand-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-brand-700 transition"
+      >
+        + Новая статья
+      </a>
+    </div>
+
+    <div id="admin-content" class="bg-white rounded-lg border border-gray-200 p-8 text-center text-gray-500">
+      <p class="mb-2">Для доступа к панели управления необходимо войти в систему</p>
+      <a href="/login" class="text-brand-500 hover:underline text-sm">Войти</a>
+    </div>
+  </div>
+</BaseLayout>

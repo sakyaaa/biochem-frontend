@@ -1,0 +1,59 @@
+---
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description = "Научно-информационный портал по биомеханике и биохимии" } = Astro.props;
+---
+
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <title>{title} | Биохим</title>
+    <link
+      rel="preconnect"
+      href="https://fonts.googleapis.com"
+      crossorigin="anonymous"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"
+    />
+  </head>
+  <body class="min-h-screen bg-gray-50 text-gray-900 font-sans flex flex-col">
+    <header class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
+      <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <a href="/" class="text-xl font-bold text-brand-900 hover:text-brand-700 transition">
+          Биохим
+        </a>
+        <div class="flex items-center gap-6 text-sm font-medium">
+          <a href="/search" class="text-gray-600 hover:text-brand-500 transition">Поиск</a>
+          <a href="/section/biomechanics" class="text-gray-600 hover:text-brand-500 transition">Биомеханика</a>
+          <a href="/section/biochemistry" class="text-gray-600 hover:text-brand-500 transition">Биохимия</a>
+          <a href="/admin" class="text-gray-600 hover:text-brand-500 transition">Панель</a>
+          <a href="/login" class="bg-brand-500 text-white px-4 py-1.5 rounded-md hover:bg-brand-700 transition">
+            Войти
+          </a>
+        </div>
+      </nav>
+    </header>
+
+    <main class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+      <slot />
+    </main>
+
+    <footer class="bg-white border-t border-gray-200 py-6 mt-auto">
+      <div class="max-w-7xl mx-auto px-4 text-center text-sm text-gray-500">
+        © {new Date().getFullYear()} ООО «Биохим» — научно-информационный портал
+      </div>
+    </footer>
+  </body>
+</html>

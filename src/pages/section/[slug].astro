@@ -1,0 +1,90 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import ArticleCard from "../../components/ArticleCard.astro";
+import { api } from "../../services/api";
+import type { Section, Article, PaginationMeta } from "../../services/api";
+
+const { slug } = Astro.params;
+const page = Number(Astro.url.searchParams.get("page") ?? 1);
+
+let section: Section | null = null;
+let articles: Article[] = [];
+let meta: PaginationMeta | null = null;
+let error: string | null = null;
+
+try {
+  const [sectionRes, articlesRes] = await Promise.all([
+    api.sections.get(slug!),
+    api.articles.list({ section_id: undefined, page, per_page: 10 }),
+  ]);
+  section = sectionRes.data;
+
+  // Фильтрация на клиенте (в идеале backend принимает section_id=)
+  const articlesFiltered = await api.articles.list({ section_id: section.id, page, per_page: 10 });
+  articles = articlesFiltered.data;
+  meta = articlesFiltered.meta;
+} catch (e) {
+  error = "Раздел не найден";
+}
+---
+
+<BaseLayout title={section?.name ?? "Раздел"} description={section?.description}>
+  {error || !section ? (
+    <div class="text-center py-20">
+      <h1 class="text-2xl font-semibold text-gray-700">Раздел не найден</h1>
+      <a href="/" class="mt-4 inline-block text-brand-500 hover:underline">← На главную</a>
+    </div>
+  ) : (
+    <div>
+      <div class="mb-8">
+        <nav class="text-sm text-gray-500 mb-3 flex items-center gap-2">
+          <a href="/" class="hover:text-brand-500">Главная</a>
+          <span>/</span>
+          <span class="text-gray-700">{section.name}</span>
+        </nav>
+        <h1 class="text-3xl font-bold text-gray-900">{section.name}</h1>
+        {section.description && (
+          <p class="mt-2 text-gray-600">{section.description}</p>
+        )}
+        <p class="mt-1 text-sm text-gray-400">{section.articles_count} материалов</p>
+      </div>
+
+      {articles.length === 0 ? (
+        <div class="text-center py-12 text-gray-500 bg-white rounded-lg border">
+          В этом разделе пока нет опубликованных материалов
+        </div>
+      ) : (
+        <div class="space-y-4">
+          {articles.map(article => (
+            <ArticleCard article={article} />
+          ))}
+        </div>
+      )}
+
+      <!-- Пагинация -->
+      {meta && meta.total_pages > 1 && (
+        <div class="mt-8 flex justify-center gap-2">
+          {page > 1 && (
+            <a
+              href={`/section/${slug}?page=${page - 1}`}
+              class="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              ← Назад
+            </a>
+          )}
+          <span class="px-4 py-2 text-sm text-gray-600">
+            {page} / {meta.total_pages}
+          </span>
+          {page < meta.total_pages && (
+            <a
+              href={`/section/${slug}?page=${page + 1}`}
+              class="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              Далее →
+            </a>
+          )}
+        </div>
+      )}
+    </div>
+  )}
+</BaseLayout>

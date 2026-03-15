@@ -1,0 +1,81 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="Вход в систему">
+  <div class="max-w-md mx-auto mt-10">
+    <div class="bg-white rounded-xl border border-gray-200 p-8 shadow-sm">
+      <h1 class="text-2xl font-bold text-gray-900 mb-6 text-center">Вход в систему</h1>
+
+      <div id="error-msg" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4 text-sm">
+      </div>
+
+      <form id="login-form" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+          <input
+            type="email"
+            name="email"
+            required
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+          />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Пароль</label>
+          <input
+            type="password"
+            name="password"
+            required
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+          />
+        </div>
+        <button
+          type="submit"
+          class="w-full bg-brand-500 text-white py-2.5 rounded-lg font-medium hover:bg-brand-700 transition"
+        >
+          Войти
+        </button>
+      </form>
+
+      <p class="mt-4 text-center text-sm text-gray-500">
+        Нет аккаунта? <a href="/register" class="text-brand-500 hover:underline">Зарегистрироваться</a>
+      </p>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById("login-form") as HTMLFormElement;
+    const errorMsg = document.getElementById("error-msg") as HTMLDivElement;
+
+    form?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errorMsg.classList.add("hidden");
+
+      const data = new FormData(form);
+      const email = data.get("email") as string;
+      const password = data.get("password") as string;
+
+      try {
+        const res = await fetch("/api/auth/sign_in", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user: { email, password } }),
+        });
+
+        const authHeader = res.headers.get("Authorization");
+        if (res.ok && authHeader) {
+          const token = authHeader.replace("Bearer ", "");
+          localStorage.setItem("jwt_token", token);
+          window.location.href = "/";
+        } else {
+          const body = await res.json();
+          errorMsg.textContent = body.error ?? "Неверный email или пароль";
+          errorMsg.classList.remove("hidden");
+        }
+      } catch {
+        errorMsg.textContent = "Ошибка соединения с сервером";
+        errorMsg.classList.remove("hidden");
+      }
+    });
+  </script>
+</BaseLayout>
