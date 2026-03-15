@@ -1,5 +1,11 @@
 # MEMORY.md — biochem-frontend
 
+## 2026-03-15-16 — Фиксы безопасности и UI
+
+- `src/services/api.ts` — убраны `getToken`/`setToken`/`clearToken` (localStorage); добавлен `credentials: "include"` для работы с httpOnly cookie
+- `src/layouts/BaseLayout.astro` — добавлены `<link rel="icon">` для favicon.ico и favicon.svg
+- `public/favicon.ico`, `public/favicon.svg` — созданы иконки сайта
+
 ## 2026-03-15 — Инициализация проекта
 
 Создана начальная структура Astro 5 SSR проекта.
