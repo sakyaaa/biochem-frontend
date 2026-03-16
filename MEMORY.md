@@ -1,5 +1,12 @@
 # MEMORY.md — biochem-frontend
 
+## 2026-03-16 — Тестовое покрытие (Vitest)
+
+- `package.json` — добавлены `vitest ^3.x`, `@vitest/coverage-v8 ^3.x`; скрипты `test`, `test:watch`, `test:coverage`
+- `vitest.config.ts` — создан; `environment: node`, `globals: true`, `env.PUBLIC_API_URL` задан для детерминированных тестов
+- `src/services/api.test.ts` — 20 unit-тестов для `api.ts`: все методы articles/sections/comments/auth/reports, проверка `credentials: include` и `Content-Type`
+- Итог: 20 Vitest тестов, 0 failures
+
 ## 2026-03-15-16 — Фиксы безопасности и UI
 
 - `src/services/api.ts` — убраны `getToken`/`setToken`/`clearToken` (localStorage); добавлен `credentials: "include"` для работы с httpOnly cookie
