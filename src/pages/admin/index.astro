@@ -21,14 +21,17 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 
   <script>
     const content = document.getElementById("admin-content")!;
-    let allArticles: Array<{ id: number; title: string; status: string; created_at: string }> = [];
 
-    async function loadAdmin() {
+    type Article = { id: number; title: string; status: string; created_at: string };
+    type Filter  = "all" | "published" | "draft";
+
+    let currentFilter: Filter = "all";
+    let currentPage = 1;
+    let totalPages  = 1;
+
+    async function loadAdmin(page = 1, filter: Filter = "all") {
       const profileRes = await fetch("/api/profile", { credentials: "include" });
-      if (profileRes.status === 401) {
-        window.location.href = "/login";
-        return;
-      }
+      if (profileRes.status === 401) { window.location.href = "/login"; return; }
 
       const { data: user } = await profileRes.json();
       if (user.role === "guest" || user.role === "member") {
@@ -36,38 +39,49 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
         return;
       }
 
-      const articlesRes = await fetch("/api/articles?per_page=50", { credentials: "include" });
-      if (!articlesRes.ok) {
-        content.innerHTML = `<p class="text-red-500">Ошибка загрузки статей</p>`;
-        return;
-      }
+      const params = new URLSearchParams({ own: "true", per_page: "20", page: String(page) });
+      if (filter !== "all") params.set("status", filter);
 
-      const { data: articles } = await articlesRes.json();
-      allArticles = articles;
-      renderArticles(articles, "all");
-      setupTabs();
+      const res = await fetch(`/api/articles?${params}`, { credentials: "include" });
+      if (!res.ok) { content.innerHTML = `<p class="text-red-500">Ошибка загрузки статей</p>`; return; }
+
+      const { data: articles, meta } = await res.json();
+      currentPage  = page;
+      currentFilter = filter;
+      totalPages   = meta?.total_pages ?? 1;
+
+      render(articles, filter, meta?.total_count ?? 0);
     }
 
     function escHtml(s: string) {
       return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     }
 
-    function renderArticles(articles: Array<{ id: number; title: string; status: string; created_at: string }>, filter: "all" | "published" | "draft") {
-      const filtered = filter === "all" ? articles : articles.filter(a => a.status === filter);
-
+    function render(articles: Article[], filter: Filter, total: number) {
       const tabsHtml = `
         <div class="flex gap-2 mb-4" id="status-tabs">
-          <button data-filter="all" class="tab-btn px-3 py-1 text-sm rounded-md ${filter === "all" ? "bg-brand-500 text-white" : "border border-gray-300 text-gray-600"}">Все</button>
-          <button data-filter="published" class="tab-btn px-3 py-1 text-sm rounded-md ${filter === "published" ? "bg-brand-500 text-white" : "border border-gray-300 text-gray-600"}">Опубликованные</button>
-          <button data-filter="draft" class="tab-btn px-3 py-1 text-sm rounded-md ${filter === "draft" ? "bg-brand-500 text-white" : "border border-gray-300 text-gray-600"}">Черновики</button>
+          <button data-filter="all"       class="tab-btn px-3 py-1 text-sm rounded-md ${filter === "all"       ? "bg-brand-500 text-white" : "border border-gray-300 text-gray-600 hover:bg-gray-50"}">Все</button>
+          <button data-filter="published" class="tab-btn px-3 py-1 text-sm rounded-md ${filter === "published" ? "bg-brand-500 text-white" : "border border-gray-300 text-gray-600 hover:bg-gray-50"}">Опубликованные</button>
+          <button data-filter="draft"     class="tab-btn px-3 py-1 text-sm rounded-md ${filter === "draft"     ? "bg-brand-500 text-white" : "border border-gray-300 text-gray-600 hover:bg-gray-50"}">Черновики</button>
         </div>
       `;
 
-      if (filtered.length === 0) {
-        content.innerHTML = tabsHtml + `<p class="text-gray-500">Статей пока нет. <a href="/admin/articles/new" class="text-brand-500 hover:underline">Создать первую</a>.</p>`;
-        setupTabs();
+      if (articles.length === 0) {
+        content.innerHTML = tabsHtml + `<p class="text-gray-500">Статей нет. <a href="/admin/articles/new" class="text-brand-500 hover:underline">Создать первую</a>.</p>`;
+        bindTabs();
         return;
       }
+
+      const paginationHtml = totalPages > 1 ? `
+        <div class="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
+          <span class="text-xs text-gray-400">Всего: ${total}</span>
+          <div class="flex items-center gap-2">
+            <button id="pg-prev" ${currentPage <= 1 ? "disabled" : ""} class="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">← Назад</button>
+            <span class="text-sm text-gray-600">${currentPage} / ${totalPages}</span>
+            <button id="pg-next" ${currentPage >= totalPages ? "disabled" : ""} class="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">Далее →</button>
+          </div>
+        </div>
+      ` : `<div class="mt-3 text-xs text-gray-400">Всего: ${total}</div>`;
 
       content.innerHTML = tabsHtml + `
         <div class="overflow-x-auto">
@@ -81,7 +95,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
               </tr>
             </thead>
             <tbody id="articles-tbody">
-              ${filtered.map((a) => `
+              ${articles.map((a) => `
                 <tr class="border-b border-gray-100 last:border-0 hover:bg-gray-50" id="article-row-${a.id}">
                   <td class="py-3 pr-4 font-medium text-gray-800">${escHtml(a.title)}</td>
                   <td class="py-3 pr-4">
@@ -99,6 +113,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
             </tbody>
           </table>
         </div>
+        ${paginationHtml}
       `;
 
       document.getElementById("articles-tbody")?.addEventListener("click", async (e) => {
@@ -109,18 +124,22 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
         const res = await fetch(`/api/articles/${id}`, { method: "DELETE", credentials: "include" });
         if (res.ok) {
           document.getElementById(`article-row-${id}`)?.remove();
+          const tbody = document.getElementById("articles-tbody");
+          if (tbody && tbody.children.length === 0) loadAdmin(currentPage > 1 ? currentPage - 1 : 1, currentFilter);
         }
       });
 
-      setupTabs();
+      document.getElementById("pg-prev")?.addEventListener("click", () => loadAdmin(currentPage - 1, currentFilter));
+      document.getElementById("pg-next")?.addEventListener("click", () => loadAdmin(currentPage + 1, currentFilter));
+
+      bindTabs();
     }
 
-    function setupTabs() {
+    function bindTabs() {
       document.getElementById("status-tabs")?.addEventListener("click", (e) => {
         const btn = (e.target as HTMLElement).closest(".tab-btn") as HTMLButtonElement | null;
         if (!btn) return;
-        const filter = btn.dataset.filter as "all" | "published" | "draft";
-        renderArticles(allArticles, filter);
+        loadAdmin(1, btn.dataset.filter as Filter);
       });
     }
 
