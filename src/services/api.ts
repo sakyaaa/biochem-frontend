@@ -30,7 +30,8 @@ export interface Article {
   updated_at:  string;
   author:      Author;
   section:     SectionRef | null;
-  tags:        TagRef[];
+  tags:           TagRef[];
+  comments_count: number;
 }
 
 export interface Section {
@@ -101,7 +102,7 @@ async function apiFetch<T>(
 // --- API ---
 export const api = {
   articles: {
-    list: (params: { page?: number; q?: string; section_id?: number; per_page?: number } = {}) => {
+    list: (params: { page?: number; q?: string; section_id?: number; per_page?: number; tag_id?: number; author_id?: number; sort?: string } = {}) => {
       const qs = new URLSearchParams(
         Object.fromEntries(
           Object.entries(params)
@@ -134,6 +135,10 @@ export const api = {
   sections: {
     list: () => apiFetch<{ data: Section[] }>("/sections"),
     get:  (slug: string) => apiFetch<{ data: Section }>(`/sections/${slug}`),
+  },
+
+  tags: {
+    get: (id: number) => apiFetch<{ data: { id: number; name: string } }>(`/tags/${id}`),
   },
 
   comments: {
@@ -176,6 +181,10 @@ export const api = {
         body: JSON.stringify({ bookmark: { article_id: articleId } }),
       }),
     delete: (id: number) => apiFetch<void>(`/bookmarks/${id}`, { method: "DELETE" }),
+  },
+
+  authors: {
+    show: (id: number) => apiFetch<{ data: { id: number; name: string; role: string } }>(`/authors/${id}`),
   },
 
   reports: {

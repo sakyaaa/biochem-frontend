@@ -2,20 +2,37 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 import ArticleCard from "../components/ArticleCard.astro";
 import { api } from "../services/api";
+import type { PaginationMeta } from "../services/api";
+
+const page = Number(Astro.url.searchParams.get("page") ?? 1);
+const sort = Astro.url.searchParams.get("sort") ?? "";
 
 let articles: Awaited<ReturnType<typeof api.articles.list>>["data"] = [];
 let sections: Awaited<ReturnType<typeof api.sections.list>>["data"] = [];
+let meta: PaginationMeta | null = null;
 let error: string | null = null;
 
 try {
   const [articlesRes, sectionsRes] = await Promise.all([
-    api.articles.list({ per_page: 6 }),
+    api.articles.list({ per_page: 9, page, ...(sort ? { sort } : {}) }),
     api.sections.list(),
   ]);
   articles = articlesRes.data;
+  meta = articlesRes.meta;
   sections = sectionsRes.data;
 } catch (e) {
   error = "Не удалось загрузить данные. Проверьте соединение.";
+}
+
+function sortUrl(s: string) {
+  return s ? `?sort=${s}` : "/";
+}
+
+function pageUrl(p: number) {
+  const params = new URLSearchParams();
+  if (sort) params.set("sort", sort);
+  params.set("page", String(p));
+  return `?${params.toString()}`;
 }
 ---
 
@@ -74,6 +91,29 @@ try {
         </div>
       </form>
 
+      <!-- Сортировка -->
+      <div class="flex items-center gap-2 mb-6 flex-wrap">
+        <span class="text-sm text-gray-500">Сортировка:</span>
+        <a
+          href={sortUrl("")}
+          class={`px-3 py-1.5 text-sm rounded-lg transition ${!sort ? "bg-brand-500 text-white" : "border border-gray-300 text-gray-600 hover:bg-gray-50"}`}
+        >
+          Новые
+        </a>
+        <a
+          href={sortUrl("views")}
+          class={`px-3 py-1.5 text-sm rounded-lg transition ${sort === "views" ? "bg-brand-500 text-white" : "border border-gray-300 text-gray-600 hover:bg-gray-50"}`}
+        >
+          По просмотрам
+        </a>
+        <a
+          href={sortUrl("oldest")}
+          class={`px-3 py-1.5 text-sm rounded-lg transition ${sort === "oldest" ? "bg-brand-500 text-white" : "border border-gray-300 text-gray-600 hover:bg-gray-50"}`}
+        >
+          Старые
+        </a>
+      </div>
+
       <!-- Список статей -->
       {articles.length === 0 ? (
         <div class="text-center py-12 text-gray-500">
@@ -84,6 +124,25 @@ try {
           {articles.map(article => (
             <ArticleCard article={article} />
           ))}
+        </div>
+      )}
+
+      <!-- Пагинация -->
+      {meta && meta.total_pages > 1 && (
+        <div class="mt-8 flex justify-center gap-2">
+          {page > 1 && (
+            <a href={pageUrl(page - 1)} class="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">
+              ← Назад
+            </a>
+          )}
+          <span class="px-4 py-2 text-sm text-gray-600">
+            Страница {page} из {meta.total_pages}
+          </span>
+          {page < meta.total_pages && (
+            <a href={pageUrl(page + 1)} class="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">
+              Далее →
+            </a>
+          )}
         </div>
       )}
     </div>

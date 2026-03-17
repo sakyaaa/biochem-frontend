@@ -14,23 +14,24 @@
 ```
 src/
   pages/                     # Файловый роутинг Astro
-    index.astro              # Главная: список статей + разделы
-    article/[id].astro       # Страница статьи (SSR)
+    index.astro              # Главная: список статей + разделы + сортировка + пагинация
+    article/[id].astro       # Страница статьи (SSR) + форма комментария + кнопка закладки
     section/[slug].astro     # Страница раздела (SSR)
+    tag/[id].astro           # Страница тега (SSR)
+    author/[id].astro        # Страница автора (SSR)
     search.astro             # Поиск (SSR)
     login.astro              # Форма входа
+    register.astro           # Регистрация
+    profile.astro            # Профиль + закладки
     admin/
-      index.astro            # Панель управления: список статей, удаление
+      index.astro            # Панель управления: список статей, фильтр статусов, удаление
       articles/
         new.astro            # Создание статьи
         [id]/edit.astro      # Редактирование статьи
-    register.astro           # Регистрация
-    profile.astro            # Профиль + закладки
-    admin/index.astro        # (см. выше)
   layouts/
     BaseLayout.astro         # HTML-обёртка: header, footer, meta
   components/
-    ArticleCard.astro        # Карточка статьи в листинге
+    ArticleCard.astro        # Карточка статьи: теги-ссылки, comments_count, кнопка «Читать далее»
   services/
     api.ts                   # Все запросы к Rails API
   styles/
@@ -39,14 +40,16 @@ src/
 
 ## Маршруты
 ```
-/                              → index.astro (главная, список статей)
-/article/:id                   → article/[id].astro (полная статья + форма комментария)
+/                              → index.astro (главная, список статей + сортировка + пагинация)
+/article/:id                   → article/[id].astro (полная статья + форма комментария + закладка)
 /section/:slug                 → section/[slug].astro (раздел)
+/tag/:id                       → tag/[id].astro (страница тега)
+/author/:id                    → author/[id].astro (страница автора)
 /search?q=...                  → search.astro (полнотекстовый поиск)
 /login                         → login.astro
 /register                      → register.astro
 /profile                       → profile.astro (профиль + закладки)
-/admin                         → admin/index.astro (список статей редактора)
+/admin                         → admin/index.astro (список статей редактора + фильтр статусов)
 /admin/articles/new            → admin/articles/new.astro
 /admin/articles/:id/edit       → admin/articles/[id]/edit.astro
 ```

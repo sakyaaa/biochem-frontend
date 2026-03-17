@@ -1,0 +1,71 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import ArticleCard from "../../components/ArticleCard.astro";
+import { api } from "../../services/api";
+import type { Article, PaginationMeta } from "../../services/api";
+
+const { id } = Astro.params;
+const page = Number(Astro.url.searchParams.get("page") ?? 1);
+
+let tagName = "";
+let articles: Article[] = [];
+let meta: PaginationMeta | null = null;
+let error: string | null = null;
+
+try {
+  const [tagRes, articlesRes] = await Promise.all([
+    api.tags.get(Number(id)),
+    api.articles.list({ tag_id: Number(id), page, per_page: 10 }),
+  ]);
+  tagName = tagRes.data.name;
+  articles = articlesRes.data;
+  meta = articlesRes.meta;
+} catch {
+  error = "Тег не найден";
+}
+---
+
+<BaseLayout title={tagName ? `Тег: ${tagName}` : "Тег"}>
+  {error ? (
+    <div class="text-center py-20">
+      <h1 class="text-2xl font-semibold text-gray-700">Тег не найден</h1>
+      <a href="/" class="mt-4 inline-block text-brand-500 hover:underline">← На главную</a>
+    </div>
+  ) : (
+    <div>
+      <div class="mb-8">
+        <nav class="text-sm text-gray-500 mb-3 flex items-center gap-2">
+          <a href="/" class="hover:text-brand-500">Главная</a>
+          <span>/</span>
+          <span class="text-gray-700">Тег: {tagName}</span>
+        </nav>
+        <h1 class="text-3xl font-bold text-gray-900">
+          <span class="text-brand-500">#</span>{tagName}
+        </h1>
+        <p class="mt-1 text-sm text-gray-400">{meta?.total_count ?? 0} материалов</p>
+      </div>
+
+      {articles.length === 0 ? (
+        <div class="text-center py-12 text-gray-500 bg-white rounded-lg border">
+          Статей с этим тегом пока нет
+        </div>
+      ) : (
+        <div class="space-y-4">
+          {articles.map(article => <ArticleCard article={article} />)}
+        </div>
+      )}
+
+      {meta && meta.total_pages > 1 && (
+        <div class="mt-8 flex justify-center gap-2">
+          {page > 1 && (
+            <a href={`/tag/${id}?page=${page - 1}`} class="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">← Назад</a>
+          )}
+          <span class="px-4 py-2 text-sm text-gray-600">{page} / {meta.total_pages}</span>
+          {page < meta.total_pages && (
+            <a href={`/tag/${id}?page=${page + 1}`} class="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">Далее →</a>
+          )}
+        </div>
+      )}
+    </div>
+  )}
+</BaseLayout>

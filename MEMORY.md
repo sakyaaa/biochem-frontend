@@ -1,5 +1,24 @@
 # MEMORY.md — biochem-frontend
 
+## 2026-03-17 — Новые фичи: теги, авторы, пагинация/сортировка главной, закладки, фильтр статусов
+
+### Изменённые файлы
+- `src/services/api.ts` — в тип `Article` добавлено `comments_count: number`; в `api.articles.list` params добавлены `tag_id`, `author_id`, `sort`; добавлен namespace `api.tags` с методом `get(id)`; добавлен namespace `api.authors` с методом `show(id)` (размещён между `reports` и остальными)
+- `src/components/ArticleCard.astro` — теги стали ссылками `/tag/:id`; в строку метаданных добавлен `comments_count` с иконкой chat bubble; добавлена кнопка «Читать далее →`
+- `src/pages/index.astro` — `per_page` 6→9; читаются `page` и `sort` из URL; передаются в `api.articles.list`; добавлены кнопки сортировки (Новые/По просмотрам/Старые); добавлена пагинация с сохранением `sort`
+- `src/pages/article/[id].astro` — добавлен `<div id="bookmark-area">` и client-side скрипт кнопки закладки (добавить/удалить, проверка текущего состояния)
+- `src/pages/admin/index.astro` — добавлен фильтр статусов (Все/Опубликованные/Черновики) на клиенте; `renderArticles` принимает параметр `filter`
+
+### Созданные файлы
+- `src/pages/tag/[id].astro` — страница тега: название, список статей, пагинация
+- `src/pages/author/[id].astro` — страница автора: аватар с первой буквой, роль, список статей, пагинация
+
+### Итог проверки
+- `npm run typecheck` — чистый
+- `npm test` — 20 тестов, 0 failures
+
+---
+
 ## 2026-03-17 — MVP финализация
 
 ### Исправления

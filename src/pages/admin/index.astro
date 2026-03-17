@@ -21,6 +21,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 
   <script>
     const content = document.getElementById("admin-content")!;
+    let allArticles: Array<{ id: number; title: string; status: string; created_at: string }> = [];
 
     async function loadAdmin() {
       const profileRes = await fetch("/api/profile", { credentials: "include" });
@@ -42,20 +43,33 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
       }
 
       const { data: articles } = await articlesRes.json();
-      renderArticles(articles);
+      allArticles = articles;
+      renderArticles(articles, "all");
+      setupTabs();
     }
 
     function escHtml(s: string) {
       return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     }
 
-    function renderArticles(articles: Array<{ id: number; title: string; status: string; created_at: string }>) {
-      if (articles.length === 0) {
-        content.innerHTML = `<p class="text-gray-500">Статей пока нет. <a href="/admin/articles/new" class="text-brand-500 hover:underline">Создать первую</a>.</p>`;
+    function renderArticles(articles: Array<{ id: number; title: string; status: string; created_at: string }>, filter: "all" | "published" | "draft") {
+      const filtered = filter === "all" ? articles : articles.filter(a => a.status === filter);
+
+      const tabsHtml = `
+        <div class="flex gap-2 mb-4" id="status-tabs">
+          <button data-filter="all" class="tab-btn px-3 py-1 text-sm rounded-md ${filter === "all" ? "bg-brand-500 text-white" : "border border-gray-300 text-gray-600"}">Все</button>
+          <button data-filter="published" class="tab-btn px-3 py-1 text-sm rounded-md ${filter === "published" ? "bg-brand-500 text-white" : "border border-gray-300 text-gray-600"}">Опубликованные</button>
+          <button data-filter="draft" class="tab-btn px-3 py-1 text-sm rounded-md ${filter === "draft" ? "bg-brand-500 text-white" : "border border-gray-300 text-gray-600"}">Черновики</button>
+        </div>
+      `;
+
+      if (filtered.length === 0) {
+        content.innerHTML = tabsHtml + `<p class="text-gray-500">Статей пока нет. <a href="/admin/articles/new" class="text-brand-500 hover:underline">Создать первую</a>.</p>`;
+        setupTabs();
         return;
       }
 
-      content.innerHTML = `
+      content.innerHTML = tabsHtml + `
         <div class="overflow-x-auto">
           <table class="w-full text-sm text-left">
             <thead class="text-xs text-gray-500 uppercase border-b border-gray-200">
@@ -67,7 +81,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
               </tr>
             </thead>
             <tbody id="articles-tbody">
-              ${articles.map((a) => `
+              ${filtered.map((a) => `
                 <tr class="border-b border-gray-100 last:border-0 hover:bg-gray-50" id="article-row-${a.id}">
                   <td class="py-3 pr-4 font-medium text-gray-800">${escHtml(a.title)}</td>
                   <td class="py-3 pr-4">
@@ -96,6 +110,17 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
         if (res.ok) {
           document.getElementById(`article-row-${id}`)?.remove();
         }
+      });
+
+      setupTabs();
+    }
+
+    function setupTabs() {
+      document.getElementById("status-tabs")?.addEventListener("click", (e) => {
+        const btn = (e.target as HTMLElement).closest(".tab-btn") as HTMLButtonElement | null;
+        if (!btn) return;
+        const filter = btn.dataset.filter as "all" | "published" | "draft";
+        renderArticles(allArticles, filter);
       });
     }
 

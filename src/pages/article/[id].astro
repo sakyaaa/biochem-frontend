@@ -69,11 +69,13 @@ const date = article
             {article.title}
           </h1>
 
-          <div class="flex items-center gap-4 text-sm text-gray-500 mb-6 pb-6 border-b border-gray-100">
+          <div class="flex items-center gap-4 text-sm text-gray-500 mb-4 pb-4 border-b border-gray-100">
             <span class="font-medium text-gray-700">{article.author.name}</span>
             <span>{date}</span>
             <span>{article.views_count} просмотров</span>
           </div>
+
+          <div id="bookmark-area" class="mt-4"></div>
 
           <!-- Теги -->
           {article.tags.length > 0 && (
@@ -197,6 +199,61 @@ const date = article
           errEl.classList.remove("hidden");
         }
       });
+    });
+  }
+
+  // Bookmark button
+  const articleIdForBookmark = window.location.pathname.split("/").pop();
+  const bookmarkArea = document.getElementById("bookmark-area");
+
+  if (bookmarkArea && articleIdForBookmark) {
+    fetch("/api/profile", { credentials: "include" }).then(async (profileRes) => {
+      if (!profileRes.ok) return;
+
+      // Check if already bookmarked
+      const bookmarksRes = await fetch("/api/bookmarks", { credentials: "include" });
+      let existingBookmarkId: number | null = null;
+      if (bookmarksRes.ok) {
+        const { data: bookmarks } = await bookmarksRes.json();
+        const found = bookmarks.find((b: { article: { id: number }; id: number }) => String(b.article.id) === articleIdForBookmark);
+        if (found) existingBookmarkId = found.id;
+      }
+
+      renderBookmarkBtn(existingBookmarkId);
+    });
+  }
+
+  function renderBookmarkBtn(bookmarkId: number | null) {
+    if (!bookmarkArea) return;
+    bookmarkArea.innerHTML = bookmarkId
+      ? `<button id="bm-btn" class="flex items-center gap-2 text-sm text-brand-500 border border-brand-500 rounded-lg px-4 py-1.5 hover:bg-brand-50 transition">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 fill-brand-500" viewBox="0 0 24 24"><path d="M5 3a2 2 0 00-2 2v16l7-3 7 3V5a2 2 0 00-2-2H5z"/></svg>
+          В закладках
+        </button>`
+      : `<button id="bm-btn" class="flex items-center gap-2 text-sm text-gray-600 border border-gray-300 rounded-lg px-4 py-1.5 hover:bg-gray-50 transition">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3a2 2 0 00-2 2v16l7-3 7 3V5a2 2 0 00-2-2H5z"/></svg>
+          В закладки
+        </button>`;
+
+    document.getElementById("bm-btn")?.addEventListener("click", async () => {
+      if (bookmarkId) {
+        // Delete
+        const res = await fetch(`/api/bookmarks/${bookmarkId}`, { method: "DELETE", credentials: "include" });
+        if (res.ok) { bookmarkId = null; renderBookmarkBtn(null); }
+      } else {
+        // Create
+        const res = await fetch("/api/bookmarks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ bookmark: { article_id: Number(articleIdForBookmark) } }),
+        });
+        if (res.ok) {
+          const { data } = await res.json();
+          bookmarkId = data.id;
+          renderBookmarkBtn(bookmarkId);
+        }
+      }
     });
   }
 </script>

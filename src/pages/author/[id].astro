@@ -1,0 +1,83 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import ArticleCard from "../../components/ArticleCard.astro";
+import { api } from "../../services/api";
+import type { Article, PaginationMeta } from "../../services/api";
+
+const { id } = Astro.params;
+const page = Number(Astro.url.searchParams.get("page") ?? 1);
+
+let authorName = "";
+let authorRole = "";
+let articles: Article[] = [];
+let meta: PaginationMeta | null = null;
+let error: string | null = null;
+
+try {
+  const [authorRes, articlesRes] = await Promise.all([
+    api.authors.show(Number(id)),
+    api.articles.list({ author_id: Number(id), page, per_page: 10 }),
+  ]);
+  authorName = authorRes.data.name;
+  authorRole = authorRes.data.role;
+  articles = articlesRes.data;
+  meta = articlesRes.meta;
+} catch {
+  error = "Автор не найден";
+}
+
+const roleLabel: Record<string, string> = {
+  guest: "Гость", member: "Участник", editor: "Редактор", admin: "Администратор"
+};
+---
+
+<BaseLayout title={authorName ? `Автор: ${authorName}` : "Автор"}>
+  {error ? (
+    <div class="text-center py-20">
+      <h1 class="text-2xl font-semibold text-gray-700">Автор не найден</h1>
+      <a href="/" class="mt-4 inline-block text-brand-500 hover:underline">← На главную</a>
+    </div>
+  ) : (
+    <div>
+      <div class="mb-8 bg-white rounded-xl border border-gray-200 p-6">
+        <nav class="text-sm text-gray-500 mb-4 flex items-center gap-2">
+          <a href="/" class="hover:text-brand-500">Главная</a>
+          <span>/</span>
+          <span class="text-gray-700">{authorName}</span>
+        </nav>
+        <div class="flex items-center gap-4">
+          <div class="w-14 h-14 rounded-full bg-brand-100 flex items-center justify-center text-2xl font-bold text-brand-600">
+            {authorName.charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <h1 class="text-2xl font-bold text-gray-900">{authorName}</h1>
+            <span class="text-sm text-gray-500">{roleLabel[authorRole] ?? authorRole}</span>
+          </div>
+        </div>
+        <p class="mt-3 text-sm text-gray-400">{meta?.total_count ?? 0} опубликованных материалов</p>
+      </div>
+
+      {articles.length === 0 ? (
+        <div class="text-center py-12 text-gray-500 bg-white rounded-lg border">
+          У этого автора пока нет опубликованных материалов
+        </div>
+      ) : (
+        <div class="space-y-4">
+          {articles.map(article => <ArticleCard article={article} />)}
+        </div>
+      )}
+
+      {meta && meta.total_pages > 1 && (
+        <div class="mt-8 flex justify-center gap-2">
+          {page > 1 && (
+            <a href={`/author/${id}?page=${page - 1}`} class="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">← Назад</a>
+          )}
+          <span class="px-4 py-2 text-sm text-gray-600">{page} / {meta.total_pages}</span>
+          {page < meta.total_pages && (
+            <a href={`/author/${id}?page=${page + 1}`} class="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">Далее →</a>
+          )}
+        </div>
+      )}
+    </div>
+  )}
+</BaseLayout>
