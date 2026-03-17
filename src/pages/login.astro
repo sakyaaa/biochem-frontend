@@ -63,6 +63,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         });
 
         if (res.ok) {
+          sessionStorage.setItem("toast", "login");
           window.location.href = "/";
         } else {
           const body = await res.json();

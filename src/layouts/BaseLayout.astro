@@ -59,6 +59,20 @@ const { title, description = "Научно-информационный порт
       </div>
     </footer>
     <script>
+      // Toast
+      (() => {
+        const msg = sessionStorage.getItem("toast");
+        if (!msg) return;
+        sessionStorage.removeItem("toast");
+        const text = msg === "register" ? "Регистрация прошла успешно — добро пожаловать!" : "Вы успешно вошли в систему";
+        const toast = document.createElement("div");
+        toast.className = "fixed top-5 right-5 z-[100] bg-green-600 text-white text-sm font-medium px-5 py-3 rounded-lg shadow-lg transition-opacity duration-500";
+        toast.textContent = text;
+        document.body.appendChild(toast);
+        setTimeout(() => { toast.style.opacity = "0"; setTimeout(() => toast.remove(), 500); }, 3000);
+      })();
+    </script>
+    <script>
       (async () => {
         const area = document.getElementById("auth-area");
         if (!area) return;
