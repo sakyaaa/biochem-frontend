@@ -142,6 +142,25 @@ const date = article
 </BaseLayout>
 
 <script>
+  function showErrors(el: HTMLElement, body: { error?: string; errors?: string[] }, fallback = "Произошла ошибка") {
+    const messages = body?.errors?.length ? body.errors : [body?.error ?? fallback];
+    el.innerHTML = "";
+    const icon = document.createElement("span");
+    icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
+    el.appendChild(icon);
+    const text = document.createElement("div");
+    if (messages.length === 1) {
+      text.textContent = messages[0];
+    } else {
+      const ul = document.createElement("ul");
+      ul.className = "list-disc list-inside space-y-0.5";
+      messages.forEach(m => { const li = document.createElement("li"); li.textContent = m; ul.appendChild(li); });
+      text.appendChild(ul);
+    }
+    el.appendChild(text);
+    el.classList.remove("hidden");
+  }
+
   const articleId = window.location.pathname.split("/").pop();
   const formArea = document.getElementById("comment-form-area");
   const loginHint = document.getElementById("comment-login-hint");
@@ -154,7 +173,7 @@ const date = article
       const form = document.createElement("form");
       form.id = "new-comment-form";
       form.innerHTML = `
-        <div id="comment-error" class="hidden text-red-500 text-sm mb-2"></div>
+        <div id="comment-error" class="hidden bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2.5 text-sm mb-3 flex gap-2"></div>
         <textarea name="body" rows="4" required placeholder="Ваш комментарий..."
           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-y mb-3"></textarea>
         <button type="submit"
@@ -178,6 +197,7 @@ const date = article
         });
 
         if (postRes.ok) {
+          errEl.classList.add("hidden");
           const { data: comment } = await postRes.json();
           const listEl = document.querySelector(".space-y-4") ?? (() => {
             const list = document.createElement("div");
@@ -221,8 +241,7 @@ const date = article
           (form.querySelector("textarea") as HTMLTextAreaElement).value = "";
         } else {
           const j = await postRes.json();
-          errEl.textContent = j.error ?? "Ошибка отправки комментария";
-          errEl.classList.remove("hidden");
+          showErrors(errEl, j, "Ошибка отправки комментария");
         }
       });
     });

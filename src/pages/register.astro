@@ -7,7 +7,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     <div class="bg-white rounded-xl border border-gray-200 p-8 shadow-sm">
       <h1 class="text-2xl font-bold text-gray-900 mb-6 text-center">Регистрация</h1>
 
-      <div id="error-msg" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4 text-sm"></div>
+      <div id="error-msg" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm flex gap-2.5"></div>
 
       <form id="register-form" class="space-y-4">
         <div>
@@ -53,6 +53,25 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   </div>
 
   <script>
+    function showErrors(el: HTMLElement, body: { error?: string; errors?: string[] }, fallback = "Произошла ошибка") {
+      const messages = body?.errors?.length ? body.errors : [body?.error ?? fallback];
+      el.innerHTML = "";
+      const icon = document.createElement("span");
+      icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
+      el.appendChild(icon);
+      const text = document.createElement("div");
+      if (messages.length === 1) {
+        text.textContent = messages[0];
+      } else {
+        const ul = document.createElement("ul");
+        ul.className = "list-disc list-inside space-y-0.5";
+        messages.forEach(m => { const li = document.createElement("li"); li.textContent = m; ul.appendChild(li); });
+        text.appendChild(ul);
+      }
+      el.appendChild(text);
+      el.classList.remove("hidden");
+    }
+
     const form = document.getElementById("register-form") as HTMLFormElement;
     const errorMsg = document.getElementById("error-msg") as HTMLDivElement;
 
@@ -78,15 +97,10 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           window.location.href = "/";
         } else {
           const body = await res.json();
-          const errors: string[] = body.errors ?? [];
-          errorMsg.textContent = errors.length
-            ? errors.join(", ")
-            : (body.error ?? "Ошибка регистрации");
-          errorMsg.classList.remove("hidden");
+          showErrors(errorMsg, body, "Ошибка регистрации");
         }
       } catch {
-        errorMsg.textContent = "Ошибка соединения с сервером";
-        errorMsg.classList.remove("hidden");
+        showErrors(errorMsg, {}, "Ошибка соединения с сервером");
       }
     });
   </script>

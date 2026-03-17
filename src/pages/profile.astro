@@ -35,7 +35,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         <!-- Данные профиля -->
         <div class="bg-white rounded-xl border border-gray-200 p-6 mb-8">
           <h2 class="text-lg font-semibold text-gray-800 mb-4">Данные аккаунта</h2>
-          <div id="profile-error" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4 text-sm"></div>
+          <div id="profile-error" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm flex gap-2.5"></div>
           <form id="profile-form" class="space-y-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Имя</label>
@@ -104,11 +104,11 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           (document.querySelector('[name="name"]') as HTMLInputElement).value = updated.name;
           (document.querySelector('[name="email"]') as HTMLInputElement).value = updated.email;
           (document.querySelector('[name="password"]') as HTMLInputElement).value = "";
+          errEl.classList.add("hidden");
+          showSuccess(errEl.parentElement!, "Профиль успешно сохранён");
         } else {
           const j = await res.json();
-          const errors: string[] = j.errors ?? [];
-          errEl.textContent = errors.join(", ") || (j.error ?? "Ошибка сохранения");
-          errEl.classList.remove("hidden");
+          showErrors(errEl, j, "Ошибка сохранения");
         }
       });
 
@@ -133,6 +133,38 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 
     function escHtml(s: string) {
       return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    function showSuccess(container: HTMLElement, message: string) {
+      const existing = container.querySelector(".success-banner");
+      if (existing) existing.remove();
+      const div = document.createElement("div");
+      div.className = "success-banner bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4 text-sm flex gap-2.5";
+      div.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20 6L9 17l-5-5"/></svg>`;
+      const text = document.createElement("span");
+      text.textContent = message;
+      div.appendChild(text);
+      container.prepend(div);
+      setTimeout(() => div.remove(), 4000);
+    }
+
+    function showErrors(el: HTMLElement, body: { error?: string; errors?: string[] }, fallback = "Произошла ошибка") {
+      const messages = body?.errors?.length ? body.errors : [body?.error ?? fallback];
+      el.innerHTML = "";
+      const icon = document.createElement("span");
+      icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
+      el.appendChild(icon);
+      const text = document.createElement("div");
+      if (messages.length === 1) {
+        text.textContent = messages[0];
+      } else {
+        const ul = document.createElement("ul");
+        ul.className = "list-disc list-inside space-y-0.5";
+        messages.forEach(m => { const li = document.createElement("li"); li.textContent = m; ul.appendChild(li); });
+        text.appendChild(ul);
+      }
+      el.appendChild(text);
+      el.classList.remove("hidden");
     }
 
     loadProfile();
