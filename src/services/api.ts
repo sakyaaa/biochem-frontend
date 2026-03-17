@@ -57,9 +57,8 @@ export interface UserProfile {
 }
 
 export interface Bookmark {
-  id:         number;
-  created_at: string;
-  article:    Article;
+  id:      number;
+  article: Article;
 }
 
 export interface PaginationMeta {
@@ -91,8 +90,13 @@ async function apiFetch<T>(
   });
 
   if (!response.ok) {
-    const err = await response.json().catch(() => ({ error: response.statusText }));
-    throw new Error((err as { error?: string }).error ?? "API Error");
+    let message = response.statusText || "API Error";
+    try {
+      const body = await response.json();
+      if (typeof body?.error === "string")        message = body.error;
+      else if (Array.isArray(body?.errors))       message = body.errors.join(", ");
+    } catch { /* не JSON — оставляем statusText */ }
+    throw new Error(message);
   }
 
   if (response.status === 204) return undefined as T;

@@ -13,17 +13,13 @@ let meta: PaginationMeta | null = null;
 let error: string | null = null;
 
 try {
-  const [sectionRes, articlesRes] = await Promise.all([
-    api.sections.get(slug!),
-    api.articles.list({ section_id: undefined, page, per_page: 10 }),
-  ]);
+  const sectionRes = await api.sections.get(slug!);
   section = sectionRes.data;
 
-  // Фильтрация на клиенте (в идеале backend принимает section_id=)
-  const articlesFiltered = await api.articles.list({ section_id: section.id, page, per_page: 10 });
-  articles = articlesFiltered.data;
-  meta = articlesFiltered.meta;
-} catch (e) {
+  const articlesRes = await api.articles.list({ section_id: section.id, page, per_page: 10 });
+  articles = articlesRes.data;
+  meta     = articlesRes.meta;
+} catch {
   error = "Раздел не найден";
 }
 ---
