@@ -57,7 +57,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                 class="bg-brand-500 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-brand-700 transition">
                 Сохранить
               </button>
-              <span class="text-xs text-gray-400">Роль: ${escHtml(user.role)}</span>
+              <span class="text-xs text-gray-400">Роль: ${roleLabel[user.role] ?? escHtml(user.role)}</span>
             </div>
           </form>
         </div>
@@ -123,6 +123,13 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         }
       });
     }
+
+    const roleLabel: Record<string, string> = {
+      guest:  "Гость",
+      member: "Участник",
+      editor: "Редактор",
+      admin:  "Администратор",
+    };
 
     function escHtml(s: string) {
       return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
