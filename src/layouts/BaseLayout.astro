@@ -83,9 +83,11 @@ const { title, description = "Научно-информационный порт
             const isEditor = data.role === "editor" || data.role === "admin";
             area.innerHTML = `
               ${isEditor ? '<a href="/admin" class="text-gray-600 hover:text-brand-500 transition text-sm font-medium">Панель</a>' : ""}
-              <a href="/profile" class="text-gray-700 font-medium text-sm hover:text-brand-500 transition">${data.name}</a>
+              <a href="/profile" id="profile-name-link" class="text-gray-700 font-medium text-sm hover:text-brand-500 transition"></a>
               <button id="logout-btn" class="text-sm text-red-500 hover:text-red-700 transition">Выйти</button>
             `;
+            const nameLink = document.getElementById("profile-name-link");
+            if (nameLink) nameLink.textContent = data.name;
             document.getElementById("logout-btn")?.addEventListener("click", async () => {
               await fetch("/api/auth/sign_out", { method: "DELETE", credentials: "include" });
               window.location.reload();
