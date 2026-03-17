@@ -14,6 +14,8 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
       </a>
     </div>
 
+    <div id="stats-row" class="grid grid-cols-3 gap-4 mb-6"></div>
+
     <div id="admin-content" class="bg-white rounded-lg border border-gray-200 p-8 text-center text-gray-500">
       <p>Загрузка...</p>
     </div>
@@ -21,13 +23,48 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 
   <script>
     const content = document.getElementById("admin-content")!;
+    const statsRow = document.getElementById("stats-row")!;
 
-    type Article = { id: number; title: string; status: string; created_at: string };
+    type Article = { id: number; title: string; status: string; created_at: string; views_count: number };
     type Filter  = "all" | "published" | "draft";
 
     let currentFilter: Filter = "all";
     let currentPage = 1;
     let totalPages  = 1;
+    let statsLoaded = false;
+
+    function renderStats(total: number, published: number, draft: number, views: number) {
+      const cards = [
+        { label: "Всего статей",      value: total,     color: "text-brand-600",  bg: "bg-brand-50"  },
+        { label: "Опубликованных",    value: published, color: "text-green-600",  bg: "bg-green-50"  },
+        { label: "Черновиков",        value: draft,     color: "text-yellow-600", bg: "bg-yellow-50" },
+      ];
+      statsRow.innerHTML = cards.map(c => `
+        <div class="${c.bg} rounded-xl border border-gray-100 p-5">
+          <p class="text-xs text-gray-500 mb-1">${c.label}</p>
+          <p class="text-3xl font-bold ${c.color}">${c.value}</p>
+        </div>
+      `).join("");
+    }
+
+    async function loadStats() {
+      if (statsLoaded) return;
+      statsLoaded = true;
+      try {
+        const [allRes, pubRes, draftRes] = await Promise.all([
+          fetch("/api/articles?own=true&per_page=1", { credentials: "include" }),
+          fetch("/api/articles?own=true&per_page=1&status=published", { credentials: "include" }),
+          fetch("/api/articles?own=true&per_page=1&status=draft",     { credentials: "include" }),
+        ]);
+        const [allJson, pubJson, draftJson] = await Promise.all([allRes.json(), pubRes.json(), draftRes.json()]);
+        renderStats(
+          allJson.meta?.total_count   ?? 0,
+          pubJson.meta?.total_count   ?? 0,
+          draftJson.meta?.total_count ?? 0,
+          0
+        );
+      } catch { /* тихо игнорируем */ }
+    }
 
     async function loadAdmin(page = 1, filter: Filter = "all") {
       const profileRes = await fetch("/api/profile", { credentials: "include" });
@@ -38,6 +75,8 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
         content.innerHTML = `<p class="text-yellow-700">Нет доступа. Панель управления доступна только для редакторов и администраторов.</p>`;
         return;
       }
+
+      loadStats();
 
       const params = new URLSearchParams({ own: "true", per_page: "20", page: String(page) });
       if (filter !== "all") params.set("status", filter);

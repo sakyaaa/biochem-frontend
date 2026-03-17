@@ -37,9 +37,17 @@ const { title, description = "Научно-информационный порт
           Биохим
         </a>
         <div class="flex items-center gap-6 text-sm font-medium">
-          <a href="/search" class="text-gray-600 hover:text-brand-500 transition">Поиск</a>
+          <a href="/sections" class="text-gray-600 hover:text-brand-500 transition">Разделы</a>
           <a href="/section/biomechanics" class="text-gray-600 hover:text-brand-500 transition">Биомеханика</a>
           <a href="/section/biochemistry" class="text-gray-600 hover:text-brand-500 transition">Биохимия</a>
+          <form action="/search" method="get" class="flex items-center gap-1">
+            <input
+              type="text"
+              name="q"
+              placeholder="Поиск..."
+              class="w-28 border border-gray-200 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-brand-500 focus:w-40 transition-all placeholder:text-gray-400"
+            />
+          </form>
           <div id="auth-area" class="flex items-center gap-3">
             <a href="/login" class="bg-brand-500 text-white px-4 py-1.5 rounded-md hover:bg-brand-700 transition">
               Войти

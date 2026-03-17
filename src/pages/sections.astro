@@ -1,0 +1,62 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { api } from "../services/api";
+import type { Section } from "../services/api";
+
+let sections: Section[] = [];
+let error: string | null = null;
+
+try {
+  const res = await api.sections.list();
+  sections = res.data;
+} catch {
+  error = "Ошибка загрузки разделов";
+}
+
+function pluralMaterials(n: number): string {
+  if (n % 10 === 1 && n % 100 !== 11) return `${n} материал`;
+  if (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20)) return `${n} материала`;
+  return `${n} материалов`;
+}
+---
+
+<BaseLayout title="Разделы">
+  <div class="max-w-3xl mx-auto">
+    <nav class="text-sm text-gray-500 mb-6 flex items-center gap-2">
+      <a href="/" class="hover:text-brand-500">Главная</a>
+      <span>/</span>
+      <span class="text-gray-700">Разделы</span>
+    </nav>
+
+    <h1 class="text-3xl font-bold text-gray-900 mb-8">Разделы базы знаний</h1>
+
+    {error ? (
+      <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+        {error}
+      </div>
+    ) : sections.length === 0 ? (
+      <div class="text-center py-16 bg-white rounded-xl border border-gray-200">
+        <p class="text-gray-500">Разделы пока не добавлены</p>
+      </div>
+    ) : (
+      <div class="grid gap-4 sm:grid-cols-2">
+        {sections.map(section => (
+          <a
+            href={`/section/${section.slug}`}
+            class="group bg-white rounded-xl border border-gray-200 p-6 hover:border-brand-300 hover:shadow-sm transition-all"
+          >
+            <h2 class="text-lg font-semibold text-gray-900 group-hover:text-brand-600 transition mb-2">
+              {section.name}
+            </h2>
+            {section.description && (
+              <p class="text-sm text-gray-500 mb-3 line-clamp-2">{section.description}</p>
+            )}
+            <span class="text-xs text-brand-500 font-medium">
+              {pluralMaterials(section.articles_count)}
+            </span>
+          </a>
+        ))}
+      </div>
+    )}
+  </div>
+</BaseLayout>
