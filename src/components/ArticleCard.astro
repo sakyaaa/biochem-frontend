@@ -49,7 +49,7 @@ const excerpt = article.content.replace(/<[^>]*>/g, "").substring(0, 400);
     )}
 
     <div class="flex items-center gap-4 text-xs text-gray-400 pt-1 border-t border-gray-100">
-      <span>{article.author.name}</span>
+      <a href={`/author/${article.author.id}`} class="hover:text-brand-500 transition">{article.author.name}</a>
       <span>{date}</span>
       <span class="flex items-center gap-1">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

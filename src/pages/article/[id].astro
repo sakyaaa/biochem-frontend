@@ -69,21 +69,25 @@ const date = article
             {article.title}
           </h1>
 
-          <div class="flex items-center gap-4 text-sm text-gray-500 mb-4 pb-4 border-b border-gray-100">
-            <span class="font-medium text-gray-700">{article.author.name}</span>
+          <div class="flex items-center flex-wrap gap-4 text-sm text-gray-500 mb-6 pb-4 border-b border-gray-100">
+            <a href={`/author/${article.author.id}`} class="font-medium text-gray-700 hover:text-brand-500 transition">
+              {article.author.name}
+            </a>
             <span>{date}</span>
             <span>{article.views_count} просмотров</span>
+            <div id="bookmark-area" class="ml-auto"></div>
           </div>
-
-          <div id="bookmark-area" class="mt-4"></div>
 
           <!-- Теги -->
           {article.tags.length > 0 && (
             <div class="flex gap-2 flex-wrap mb-6">
               {article.tags.map(tag => (
-                <span class="px-3 py-1 text-xs bg-blue-50 text-blue-700 rounded-full border border-blue-100">
+                <a
+                  href={`/tag/${tag.id}`}
+                  class="px-3 py-1 text-xs bg-blue-50 text-blue-700 rounded-full border border-blue-100 hover:bg-blue-100 transition"
+                >
                   {tag.name}
-                </span>
+                </a>
               ))}
             </div>
           )}
