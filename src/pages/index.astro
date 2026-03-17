@@ -3,6 +3,10 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import ArticleCard from "../components/ArticleCard.astro";
 import { api } from "../services/api";
 import type { PaginationMeta } from "../services/api";
+import { getLang, getT } from "../i18n/index";
+
+const lang = getLang(Astro.cookies);
+const t    = getT(lang);
 
 const page = Number(Astro.url.searchParams.get("page") ?? 1);
 const sort = Astro.url.searchParams.get("sort") ?? "";
@@ -21,7 +25,7 @@ try {
   meta = articlesRes.meta;
   sections = sectionsRes.data;
 } catch (e) {
-  error = "Не удалось загрузить данные. Проверьте соединение.";
+  error = t.common.connection;
 }
 
 function sortUrl(s: string) {
@@ -36,7 +40,7 @@ function pageUrl(p: number) {
 }
 ---
 
-<BaseLayout title="Главная">
+<BaseLayout title={t.index.title}>
   {error && (
     <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
       {error}
@@ -47,7 +51,7 @@ function pageUrl(p: number) {
     <!-- Боковая панель с разделами -->
     <aside class="lg:col-span-1">
       <div class="bg-white rounded-lg border border-gray-200 p-5">
-        <h2 class="font-semibold text-gray-800 mb-4 text-lg">Разделы</h2>
+        <h2 class="font-semibold text-gray-800 mb-4 text-lg">{t.index.sections}</h2>
         <ul class="space-y-2">
           {sections.map(s => (
             <li>
@@ -69,8 +73,8 @@ function pageUrl(p: number) {
     <!-- Основной контент -->
     <div class="lg:col-span-3">
       <div class="mb-6">
-        <h1 class="text-3xl font-bold text-gray-900 mb-2">База научных знаний</h1>
-        <p class="text-gray-600">Биомеханика и биохимия человеческого организма</p>
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">{t.index.title}</h1>
+        <p class="text-gray-600">{t.index.subtitle}</p>
       </div>
 
       <!-- Строка поиска -->
@@ -79,45 +83,45 @@ function pageUrl(p: number) {
           <input
             type="text"
             name="q"
-            placeholder="Поиск: синтез АТФ, биомеханика колена..."
+            placeholder={t.index.searchPlaceholder}
             class="flex-1 border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
           />
           <button
             type="submit"
             class="bg-brand-500 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-brand-700 transition"
           >
-            Найти
+            {t.index.searchBtn}
           </button>
         </div>
       </form>
 
       <!-- Сортировка -->
       <div class="flex items-center gap-2 mb-6 flex-wrap">
-        <span class="text-sm text-gray-500">Сортировка:</span>
+        <span class="text-sm text-gray-500">{t.index.sort}</span>
         <a
           href={sortUrl("")}
           class={`px-3 py-1.5 text-sm rounded-lg transition ${!sort ? "bg-brand-500 text-white" : "border border-gray-300 text-gray-600 hover:bg-gray-50"}`}
         >
-          Новые
+          {t.index.sortNew}
         </a>
         <a
           href={sortUrl("views")}
           class={`px-3 py-1.5 text-sm rounded-lg transition ${sort === "views" ? "bg-brand-500 text-white" : "border border-gray-300 text-gray-600 hover:bg-gray-50"}`}
         >
-          По просмотрам
+          {t.index.sortViews}
         </a>
         <a
           href={sortUrl("oldest")}
           class={`px-3 py-1.5 text-sm rounded-lg transition ${sort === "oldest" ? "bg-brand-500 text-white" : "border border-gray-300 text-gray-600 hover:bg-gray-50"}`}
         >
-          Старые
+          {t.index.sortOldest}
         </a>
       </div>
 
       <!-- Список статей -->
       {articles.length === 0 ? (
         <div class="text-center py-12 text-gray-500">
-          Статьи не найдены
+          {t.index.empty}
         </div>
       ) : (
         <div class="space-y-4">
@@ -132,15 +136,15 @@ function pageUrl(p: number) {
         <div class="mt-8 flex justify-center gap-2">
           {page > 1 && (
             <a href={pageUrl(page - 1)} class="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">
-              ← Назад
+              ←
             </a>
           )}
           <span class="px-4 py-2 text-sm text-gray-600">
-            Страница {page} из {meta.total_pages}
+            {t.index.page} {page} {t.index.of} {meta.total_pages}
           </span>
           {page < meta.total_pages && (
             <a href={pageUrl(page + 1)} class="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50">
-              Далее →
+              →
             </a>
           )}
         </div>

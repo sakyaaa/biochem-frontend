@@ -2,6 +2,10 @@
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { api } from "../../services/api";
 import type { Article, Comment } from "../../services/api";
+import { getLang, getT } from "../../i18n/index";
+
+const lang = getLang(Astro.cookies);
+const t    = getT(lang);
 
 const { id } = Astro.params;
 
@@ -17,30 +21,31 @@ try {
   article = articleRes.data;
   comments = commentsRes.data;
 } catch (e) {
-  error = "Статья не найдена";
+  error = t.notFound.title;
 }
 
+const locale = lang === "en" ? "en-US" : "ru-RU";
 const date = article
-  ? new Date(article.created_at).toLocaleDateString("ru-RU", {
+  ? new Date(article.created_at).toLocaleDateString(locale, {
       day: "numeric", month: "long", year: "numeric"
     })
   : "";
 ---
 
 <BaseLayout
-  title={article?.title ?? "Статья не найдена"}
+  title={article?.title ?? t.notFound.title}
   description={article?.content.substring(0, 160)}
 >
   {error || !article ? (
     <div class="text-center py-20">
-      <h1 class="text-2xl font-semibold text-gray-700">Статья не найдена</h1>
-      <a href="/" class="mt-4 inline-block text-brand-500 hover:underline">← На главную</a>
+      <h1 class="text-2xl font-semibold text-gray-700">{t.notFound.title}</h1>
+      <a href="/" class="mt-4 inline-block text-brand-500 hover:underline">{t.common.backHome}</a>
     </div>
   ) : (
     <div class="max-w-4xl mx-auto">
       <!-- Хлебные крошки -->
       <nav class="text-sm text-gray-500 mb-6 flex items-center gap-2">
-        <a href="/" class="hover:text-brand-500">Главная</a>
+        <a href="/" class="hover:text-brand-500">{t.common.home}</a>
         {article.section && (
           <>
             <span>/</span>
@@ -74,13 +79,13 @@ const date = article
               {article.author.name}
             </a>
             <span>{date}</span>
-            <span>{article.views_count} просмотров</span>
+            <span>{article.views_count} {t.article.views}</span>
             <div class="ml-auto flex items-center gap-3">
               <button id="share-btn" class="text-sm text-gray-400 hover:text-brand-500 transition flex items-center gap-1.5">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
                 </svg>
-                <span id="share-label">Поделиться</span>
+                <span id="share-label">{t.article.share}</span>
               </button>
               <div id="bookmark-area"></div>
             </div>
@@ -108,11 +113,11 @@ const date = article
       <!-- Комментарии -->
       <section class="mt-8">
         <h2 class="text-xl font-semibold text-gray-800 mb-4">
-          Комментарии ({comments.length})
+          {t.article.comments} ({comments.length})
         </h2>
 
         {comments.length === 0 ? (
-          <p class="text-gray-500 text-sm">Комментариев пока нет. Будьте первым!</p>
+          <p class="text-gray-500 text-sm">{t.article.noComments}</p>
         ) : (
           <div class="space-y-4">
             {comments.map(comment => (
@@ -120,7 +125,7 @@ const date = article
                 <div class="flex items-center gap-2 mb-2">
                   <span class="font-medium text-sm text-gray-800">{comment.user.name}</span>
                   <span class="text-xs text-gray-400">
-                    {new Date(comment.created_at).toLocaleDateString("ru-RU")}
+                    {new Date(comment.created_at).toLocaleDateString(locale)}
                   </span>
                 </div>
                 <p class="text-sm text-gray-700 leading-relaxed">{comment.body}</p>
@@ -131,9 +136,9 @@ const date = article
 
         <!-- Форма комментария (требует JS) -->
         <div id="comment-form-area" class="mt-6 bg-white rounded-lg border border-gray-200 p-6">
-          <h3 class="font-medium text-gray-800 mb-4">Оставить комментарий</h3>
+          <h3 class="font-medium text-gray-800 mb-4">{t.article.leaveComment}</h3>
           <p class="text-sm text-gray-500" id="comment-login-hint">
-            Для комментирования необходимо <a href="/login" class="text-brand-500 hover:underline">войти</a>.
+            {t.article.loginToComment} <a href="/login" class="text-brand-500 hover:underline">{t.article.loginLink}</a>.
           </p>
         </div>
       </section>
@@ -161,24 +166,39 @@ const date = article
     el.classList.remove("hidden");
   }
 
+  const lang = document.documentElement.dataset.lang ?? "ru";
+  const locale = lang === "en" ? "en-US" : "ru-RU";
+
+  const labels = {
+    share:        lang === "en" ? "Share"          : "Поделиться",
+    copied:       lang === "en" ? "Copied!"        : "Скопировано!",
+    shareError:   lang === "en" ? "Copy error"     : "Ошибка копирования",
+    bookmark:     lang === "en" ? "Bookmark"       : "В закладки",
+    bookmarkAdded:lang === "en" ? "Bookmarked ✓"   : "В закладках ✓",
+    placeholder:  lang === "en" ? "Your comment...": "Ваш комментарий...",
+    submit:       lang === "en" ? "Submit"         : "Отправить",
+    commentError: lang === "en" ? "Error submitting comment" : "Ошибка отправки комментария",
+    comments:     lang === "en" ? "Comments"       : "Комментарии",
+  };
+
   const articleId = window.location.pathname.split("/").pop();
   const formArea = document.getElementById("comment-form-area");
   const loginHint = document.getElementById("comment-login-hint");
 
   if (formArea && articleId) {
     fetch("/api/profile", { credentials: "include" }).then((res) => {
-      if (!res.ok) return; // не авторизован — оставляем подсказку
+      if (!res.ok) return;
 
       loginHint?.remove();
       const form = document.createElement("form");
       form.id = "new-comment-form";
       form.innerHTML = `
         <div id="comment-error" class="hidden bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2.5 text-sm mb-3 flex gap-2"></div>
-        <textarea name="body" rows="4" required placeholder="Ваш комментарий..."
+        <textarea name="body" rows="4" required placeholder="${labels.placeholder}"
           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-y mb-3"></textarea>
         <button type="submit"
           class="bg-brand-500 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-brand-700 transition">
-          Отправить
+          ${labels.submit}
         </button>
       `;
       formArea.appendChild(form);
@@ -219,7 +239,7 @@ const date = article
 
           const dateSpan = document.createElement("span");
           dateSpan.className = "text-xs text-gray-400";
-          dateSpan.textContent = new Date(comment.created_at).toLocaleDateString("ru-RU");
+          dateSpan.textContent = new Date(comment.created_at).toLocaleDateString(locale);
 
           header.appendChild(nameSpan);
           header.appendChild(dateSpan);
@@ -235,13 +255,13 @@ const date = article
           const countEl = document.querySelector("h2");
           if (countEl) {
             const current = parseInt(countEl.textContent?.match(/\d+/)?.[0] ?? "0");
-            countEl.textContent = `Комментарии (${current + 1})`;
+            countEl.textContent = `${labels.comments} (${current + 1})`;
           }
 
           (form.querySelector("textarea") as HTMLTextAreaElement).value = "";
         } else {
           const j = await postRes.json();
-          showErrors(errEl, j, "Ошибка отправки комментария");
+          showErrors(errEl, j, labels.commentError);
         }
       });
     });
@@ -255,7 +275,6 @@ const date = article
     fetch("/api/profile", { credentials: "include" }).then(async (profileRes) => {
       if (!profileRes.ok) return;
 
-      // Check if already bookmarked
       const bookmarksRes = await fetch("/api/bookmarks", { credentials: "include" });
       let existingBookmarkId: number | null = null;
       if (bookmarksRes.ok) {
@@ -273,20 +292,18 @@ const date = article
     bookmarkArea.innerHTML = bookmarkId
       ? `<button id="bm-btn" class="flex items-center gap-2 text-sm text-brand-500 border border-brand-500 rounded-lg px-4 py-1.5 hover:bg-brand-50 transition">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 fill-brand-500" viewBox="0 0 24 24"><path d="M5 3a2 2 0 00-2 2v16l7-3 7 3V5a2 2 0 00-2-2H5z"/></svg>
-          В закладках
+          ${labels.bookmarkAdded}
         </button>`
       : `<button id="bm-btn" class="flex items-center gap-2 text-sm text-gray-600 border border-gray-300 rounded-lg px-4 py-1.5 hover:bg-gray-50 transition">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3a2 2 0 00-2 2v16l7-3 7 3V5a2 2 0 00-2-2H5z"/></svg>
-          В закладки
+          ${labels.bookmark}
         </button>`;
 
     document.getElementById("bm-btn")?.addEventListener("click", async () => {
       if (bookmarkId) {
-        // Delete
         const res = await fetch(`/api/bookmarks/${bookmarkId}`, { method: "DELETE", credentials: "include" });
         if (res.ok) { bookmarkId = null; renderBookmarkBtn(null); }
       } else {
-        // Create
         const res = await fetch("/api/bookmarks", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -305,13 +322,24 @@ const date = article
   // Share button
   document.getElementById("share-btn")?.addEventListener("click", async () => {
     const label = document.getElementById("share-label")!;
+    const url = window.location.href;
     try {
-      await navigator.clipboard.writeText(window.location.href);
-      label.textContent = "Скопировано!";
-      setTimeout(() => { label.textContent = "Поделиться"; }, 2000);
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = url;
+        ta.style.cssText = "position:fixed;opacity:0;pointer-events:none";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        ta.remove();
+      }
+      label.textContent = labels.copied;
+      setTimeout(() => { label.textContent = labels.share; }, 2000);
     } catch {
-      label.textContent = "Ошибка";
-      setTimeout(() => { label.textContent = "Поделиться"; }, 2000);
+      label.textContent = labels.shareError;
+      setTimeout(() => { label.textContent = labels.share; }, 2000);
     }
   });
 </script>

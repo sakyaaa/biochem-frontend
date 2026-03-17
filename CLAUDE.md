@@ -8,9 +8,11 @@ Astro 5 SSR frontend для научно-информационного порт
 
 - Все запросы к API идут через `src/services/api.ts` — единственная точка связи с backend
 - SSR-режим (`output: "server"`) — все страницы рендерятся на сервере, данные фетчатся при запросе
-- JWT-токен хранится в `localStorage` (клиент) и передаётся через `Authorization: Bearer <token>`
+- JWT-токен хранится в httpOnly cookie (устанавливается бэкендом), JS его не видит
+- Auth-state на клиенте: `GET /api/profile` с `credentials: "include"` — 200 = авторизован, 401 = нет
 - Стили: Tailwind CSS + `@tailwindcss/typography` для prose-контента статей
 - Формулы: KaTeX (подключается через CDN в BaseLayout)
+- Локализация: `src/i18n/` — `getLang(cookies)` читает cookie `lang`, `getT(lang)` возвращает переводы; клиентские скрипты читают `document.documentElement.dataset.lang`
 
 ## ENV переменные
 - `PUBLIC_API_URL` — URL Rails API (default: `http://localhost/api`)

@@ -3,6 +3,10 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import ArticleCard from "../components/ArticleCard.astro";
 import { api } from "../services/api";
 import type { Article } from "../services/api";
+import { getLang, getT } from "../i18n/index";
+
+const lang = getLang(Astro.cookies);
+const t    = getT(lang);
 
 const q = Astro.url.searchParams.get("q") ?? "";
 const page = Number(Astro.url.searchParams.get("page") ?? 1);
@@ -17,14 +21,14 @@ if (q) {
     articles = res.data;
     total = res.meta.total_count;
   } catch (e) {
-    error = "Ошибка при выполнении поиска";
+    error = t.common.connection;
   }
 }
 ---
 
-<BaseLayout title={q ? `Поиск: ${q}` : "Поиск"}>
+<BaseLayout title={q ? `${t.search.title}: ${q}` : t.search.title}>
   <div class="max-w-3xl mx-auto">
-    <h1 class="text-2xl font-bold text-gray-900 mb-6">Поиск по базе знаний</h1>
+    <h1 class="text-2xl font-bold text-gray-900 mb-6">{t.search.title}</h1>
 
     <form action="/search" method="get" class="mb-8">
       <div class="flex gap-2">
@@ -32,7 +36,7 @@ if (q) {
           type="text"
           name="q"
           value={q}
-          placeholder="Введите запрос: синтез АТФ, биомеханика..."
+          placeholder={t.search.placeholder}
           class="flex-1 border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
           autofocus
         />
@@ -40,7 +44,7 @@ if (q) {
           type="submit"
           class="bg-brand-500 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-brand-700 transition"
         >
-          Найти
+          {t.search.btn}
         </button>
       </div>
     </form>
@@ -53,14 +57,14 @@ if (q) {
 
     {q && !error && (
       <p class="text-sm text-gray-500 mb-4">
-        По запросу «{q}» найдено результатов: <strong>{total}</strong>
+        {t.search.results}: <strong>{total}</strong> — «{q}»
       </p>
     )}
 
     {articles.length === 0 && q ? (
       <div class="text-center py-12 bg-white rounded-lg border border-gray-200">
-        <p class="text-gray-500">Ничего не найдено по запросу «{q}»</p>
-        <p class="text-sm text-gray-400 mt-2">Попробуйте изменить формулировку запроса</p>
+        <p class="text-gray-500">{t.search.empty} «{q}»</p>
+        <p class="text-sm text-gray-400 mt-2">{t.search.emptyHint}</p>
       </div>
     ) : (
       <div class="space-y-4">

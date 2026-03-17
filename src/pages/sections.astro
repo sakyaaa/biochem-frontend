@@ -2,6 +2,10 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 import { api } from "../services/api";
 import type { Section } from "../services/api";
+import { getLang, getT } from "../i18n/index";
+
+const lang = getLang(Astro.cookies);
+const t    = getT(lang);
 
 let sections: Section[] = [];
 let error: string | null = null;
@@ -10,25 +14,26 @@ try {
   const res = await api.sections.list();
   sections = res.data;
 } catch {
-  error = "Ошибка загрузки разделов";
+  error = t.common.connection;
 }
 
 function pluralMaterials(n: number): string {
+  if (lang === "en") return `${n} article${n === 1 ? "" : "s"}`;
   if (n % 10 === 1 && n % 100 !== 11) return `${n} материал`;
   if (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20)) return `${n} материала`;
   return `${n} материалов`;
 }
 ---
 
-<BaseLayout title="Разделы">
+<BaseLayout title={t.sections.title}>
   <div class="max-w-3xl mx-auto">
     <nav class="text-sm text-gray-500 mb-6 flex items-center gap-2">
-      <a href="/" class="hover:text-brand-500">Главная</a>
+      <a href="/" class="hover:text-brand-500">{t.common.home}</a>
       <span>/</span>
-      <span class="text-gray-700">Разделы</span>
+      <span class="text-gray-700">{t.sections.title}</span>
     </nav>
 
-    <h1 class="text-3xl font-bold text-gray-900 mb-8">Разделы базы знаний</h1>
+    <h1 class="text-3xl font-bold text-gray-900 mb-8">{t.sections.title}</h1>
 
     {error ? (
       <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
@@ -36,7 +41,7 @@ function pluralMaterials(n: number): string {
       </div>
     ) : sections.length === 0 ? (
       <div class="text-center py-16 bg-white rounded-xl border border-gray-200">
-        <p class="text-gray-500">Разделы пока не добавлены</p>
+        <p class="text-gray-500">{t.sections.empty}</p>
       </div>
     ) : (
       <div class="grid gap-4 sm:grid-cols-2">

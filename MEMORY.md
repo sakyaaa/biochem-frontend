@@ -1,5 +1,24 @@
 # MEMORY.md — biochem-frontend
 
+## 2026-03-18 — Локализация RU/EN, фикс share button, переключатель языка
+
+### Новые файлы
+- `src/i18n/translations.ts` — все строки интерфейса для RU и EN (nav, footer, toast, common, notFound, search, sections, article, auth, index)
+- `src/i18n/index.ts` — `getLang(cookies): Lang`, `getT(lang): T`; `as unknown as T` для обхода TypeScript literal type mismatch
+
+### Изменённые файлы
+- `src/layouts/BaseLayout.astro` — читает lang из cookie, `data-lang` на `<html>`, переключатель языка перенесён в футер как единый тоггл (RU↔EN)
+- `src/pages/index.astro` — все строки через `t.index.*`
+- `src/pages/search.astro` — через `t.search.*`
+- `src/pages/404.astro` — через `t.notFound.*`
+- `src/pages/sections.astro` — через `t.sections.*`; `pluralMaterials()` lang-aware
+- `src/pages/login.astro` — статические метки через `t.auth.*`; fallback в скрипте через `dataset.lang`
+- `src/pages/register.astro` — аналогично login
+- `src/pages/article/[id].astro` — все строки (сервер + клиент) через `t.*` и объект `labels`; дата форматируется по локали (`ru-RU`/`en-US`); share button — fallback через `execCommand("copy")` для HTTP
+
+### Итог
+- TypeScript: 0 ошибок
+
 ## 2026-03-17 — Новые фичи: теги, авторы, пагинация/сортировка главной, закладки, фильтр статусов
 
 ### Изменённые файлы
