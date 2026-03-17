@@ -1,5 +1,26 @@
 # MEMORY.md — biochem-frontend
 
+## 2026-03-17 — MVP финализация
+
+### Исправления
+- `src/pages/login.astro` — убрана проверка `authHeader` (JwtCookieMiddleware удаляет заголовок, JWT в httpOnly cookie); ключ `user` → `api_user`
+- `src/services/api.ts` — `signIn`/`signUp` используют `api_user` (Devise scope); `signUp` добавлен `password_confirmation`; убран `process.env` (только `import.meta.env`); добавлены типы `UserProfile`, `Bookmark`, методы `api.profile.*`, `api.bookmarks.*`
+- `src/services/api.test.ts` — тесты обновлены под `api_user`; итог: 20 tests, 0 failures
+- `tsconfig.json` — добавлены `lib`, `skipLibCheck`; typecheck чистый
+
+### Новые страницы
+- `src/pages/register.astro` — регистрация с `api_user` + `password_confirmation`, вывод `errors[]`
+- `src/pages/profile.astro` — профиль + редактирование + закладки
+- `src/pages/admin/index.astro` — реальная панель: проверка роли, список статей с удалением
+- `src/pages/admin/articles/new.astro` — создание статьи (раздел, теги, статус)
+- `src/pages/admin/articles/[id]/edit.astro` — редактирование с предзаполнением
+
+### Обновлено
+- `src/layouts/BaseLayout.astro` — динамический header: проверяет `/api/profile`, показывает имя/выйти или «Войти»
+- `src/pages/article/[id].astro` — клиентская форма комментария (только для авторизованных)
+
+---
+
 ## 2026-03-16 — Тестовое покрытие (Vitest)
 
 - `package.json` — добавлены `vitest ^3.x`, `@vitest/coverage-v8 ^3.x`; скрипты `test`, `test:watch`, `test:coverage`

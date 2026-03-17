@@ -173,7 +173,7 @@ describe("api.auth.signIn(email, password)", () => {
     const [url, options] = mockFetch.mock.calls[0];
     expect(url).toBe(`${BASE}/auth/sign_in`);
     expect(options.method).toBe("POST");
-    expect(JSON.parse(options.body)).toMatchObject({ user: { email: "user@example.com" } });
+    expect(JSON.parse(options.body)).toMatchObject({ api_user: { email: "user@example.com" } });
   });
 
   it("бросает ошибку при 401", async () => {
@@ -192,7 +192,7 @@ describe("api.auth.signUp(name, email, password)", () => {
     expect(url).toBe(`${BASE}/auth/sign_up`);
     expect(options.method).toBe("POST");
     expect(JSON.parse(options.body)).toMatchObject({
-      user: { name: "Новый", email: "new@example.com" },
+      api_user: { name: "Новый", email: "new@example.com" },
     });
   });
 });

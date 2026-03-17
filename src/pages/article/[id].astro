@@ -116,9 +116,9 @@ const date = article
         )}
 
         <!-- Форма комментария (требует JS) -->
-        <div class="mt-6 bg-white rounded-lg border border-gray-200 p-6">
+        <div id="comment-form-area" class="mt-6 bg-white rounded-lg border border-gray-200 p-6">
           <h3 class="font-medium text-gray-800 mb-4">Оставить комментарий</h3>
-          <p class="text-sm text-gray-500">
+          <p class="text-sm text-gray-500" id="comment-login-hint">
             Для комментирования необходимо <a href="/login" class="text-brand-500 hover:underline">войти</a>.
           </p>
         </div>
@@ -126,3 +126,77 @@ const date = article
     </div>
   )}
 </BaseLayout>
+
+<script>
+  const articleId = window.location.pathname.split("/").pop();
+  const formArea = document.getElementById("comment-form-area");
+  const loginHint = document.getElementById("comment-login-hint");
+
+  if (formArea && articleId) {
+    fetch("/api/profile", { credentials: "include" }).then((res) => {
+      if (!res.ok) return; // не авторизован — оставляем подсказку
+
+      loginHint?.remove();
+      const form = document.createElement("form");
+      form.id = "new-comment-form";
+      form.innerHTML = `
+        <div id="comment-error" class="hidden text-red-500 text-sm mb-2"></div>
+        <textarea name="body" rows="4" required placeholder="Ваш комментарий..."
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-y mb-3"></textarea>
+        <button type="submit"
+          class="bg-brand-500 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-brand-700 transition">
+          Отправить
+        </button>
+      `;
+      formArea.appendChild(form);
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const errEl = document.getElementById("comment-error")!;
+        errEl.classList.add("hidden");
+
+        const body = (new FormData(form).get("body") as string).trim();
+        const postRes = await fetch(`/api/articles/${articleId}/comments`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ comment: { body } }),
+        });
+
+        if (postRes.ok) {
+          const { data: comment } = await postRes.json();
+          const listEl = document.querySelector(".space-y-4") ?? (() => {
+            const list = document.createElement("div");
+            list.className = "space-y-4";
+            const p = document.querySelector("#comment-form-area")!.previousElementSibling;
+            p?.replaceWith(list);
+            return list;
+          })();
+
+          const div = document.createElement("div");
+          div.className = "bg-white rounded-lg border border-gray-200 p-4";
+          div.innerHTML = `
+            <div class="flex items-center gap-2 mb-2">
+              <span class="font-medium text-sm text-gray-800">${comment.user.name}</span>
+              <span class="text-xs text-gray-400">${new Date(comment.created_at).toLocaleDateString("ru-RU")}</span>
+            </div>
+            <p class="text-sm text-gray-700 leading-relaxed">${comment.body}</p>
+          `;
+          listEl.appendChild(div);
+
+          const countEl = document.querySelector("h2");
+          if (countEl) {
+            const current = parseInt(countEl.textContent?.match(/\d+/)?.[0] ?? "0");
+            countEl.textContent = `Комментарии (${current + 1})`;
+          }
+
+          (form.querySelector("textarea") as HTMLTextAreaElement).value = "";
+        } else {
+          const j = await postRes.json();
+          errEl.textContent = j.error ?? "Ошибка отправки комментария";
+          errEl.classList.remove("hidden");
+        }
+      });
+    });
+  }
+</script>

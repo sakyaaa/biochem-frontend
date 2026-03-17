@@ -15,8 +15,90 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
     </div>
 
     <div id="admin-content" class="bg-white rounded-lg border border-gray-200 p-8 text-center text-gray-500">
-      <p class="mb-2">Для доступа к панели управления необходимо войти в систему</p>
-      <a href="/login" class="text-brand-500 hover:underline text-sm">Войти</a>
+      <p>Загрузка...</p>
     </div>
   </div>
+
+  <script>
+    const content = document.getElementById("admin-content")!;
+
+    async function loadAdmin() {
+      const profileRes = await fetch("/api/profile", { credentials: "include" });
+      if (profileRes.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
+
+      const { data: user } = await profileRes.json();
+      if (user.role === "guest" || user.role === "member") {
+        content.innerHTML = `<p class="text-yellow-700">Нет доступа. Панель управления доступна только для редакторов и администраторов.</p>`;
+        return;
+      }
+
+      const articlesRes = await fetch("/api/articles?per_page=50", { credentials: "include" });
+      if (!articlesRes.ok) {
+        content.innerHTML = `<p class="text-red-500">Ошибка загрузки статей</p>`;
+        return;
+      }
+
+      const { data: articles } = await articlesRes.json();
+      renderArticles(articles);
+    }
+
+    function escHtml(s: string) {
+      return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    function renderArticles(articles: Array<{ id: number; title: string; status: string; created_at: string }>) {
+      if (articles.length === 0) {
+        content.innerHTML = `<p class="text-gray-500">Статей пока нет. <a href="/admin/articles/new" class="text-brand-500 hover:underline">Создать первую</a>.</p>`;
+        return;
+      }
+
+      content.innerHTML = `
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm text-left">
+            <thead class="text-xs text-gray-500 uppercase border-b border-gray-200">
+              <tr>
+                <th class="pb-3 pr-4">Заголовок</th>
+                <th class="pb-3 pr-4">Статус</th>
+                <th class="pb-3 pr-4">Дата</th>
+                <th class="pb-3">Действия</th>
+              </tr>
+            </thead>
+            <tbody id="articles-tbody">
+              ${articles.map((a) => `
+                <tr class="border-b border-gray-100 last:border-0 hover:bg-gray-50" id="article-row-${a.id}">
+                  <td class="py-3 pr-4 font-medium text-gray-800">${escHtml(a.title)}</td>
+                  <td class="py-3 pr-4">
+                    <span class="px-2 py-0.5 rounded text-xs font-medium ${a.status === "published" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}">
+                      ${a.status === "published" ? "Опубликовано" : "Черновик"}
+                    </span>
+                  </td>
+                  <td class="py-3 pr-4 text-gray-500">${new Date(a.created_at).toLocaleDateString("ru-RU")}</td>
+                  <td class="py-3 flex items-center gap-3">
+                    <a href="/admin/articles/${a.id}/edit" class="text-brand-500 hover:text-brand-700 transition">Редактировать</a>
+                    <button data-id="${a.id}" class="delete-article text-red-400 hover:text-red-600 transition">Удалить</button>
+                  </td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      document.getElementById("articles-tbody")?.addEventListener("click", async (e) => {
+        const btn = (e.target as HTMLElement).closest(".delete-article") as HTMLButtonElement | null;
+        if (!btn) return;
+        if (!confirm("Удалить статью?")) return;
+        const id = btn.dataset.id!;
+        const res = await fetch(`/api/articles/${id}`, { method: "DELETE", credentials: "include" });
+        if (res.ok) {
+          document.getElementById(`article-row-${id}`)?.remove();
+        }
+      });
+    }
+
+    loadAdmin();
+  </script>
 </BaseLayout>

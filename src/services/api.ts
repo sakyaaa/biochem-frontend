@@ -1,7 +1,4 @@
-const API_URL =
-  (typeof import.meta !== "undefined" && import.meta.env?.PUBLIC_API_URL) ||
-  process.env.PUBLIC_API_URL ||
-  "http://localhost/api";
+const API_URL = import.meta.env.PUBLIC_API_URL ?? "http://localhost/api";
 
 // Токен хранится в httpOnly cookie — JS не имеет к нему доступа.
 // Браузер отправляет его автоматически при credentials: "include".
@@ -49,6 +46,19 @@ export interface Comment {
   body:       string;
   created_at: string;
   user:       Author;
+}
+
+export interface UserProfile {
+  id:    number;
+  name:  string;
+  email: string;
+  role:  string;
+}
+
+export interface Bookmark {
+  id:         number;
+  created_at: string;
+  article:    Article;
 }
 
 export interface PaginationMeta {
@@ -138,12 +148,34 @@ export const api = {
   auth: {
     signIn: (email: string, password: string) =>
       apiFetch<{ data: { id: number; name: string; role: string }; message: string }>(
-        "/auth/sign_in", { method: "POST", body: JSON.stringify({ user: { email, password } }) }
+        "/auth/sign_in", { method: "POST", body: JSON.stringify({ api_user: { email, password } }) }
       ),
     signUp: (name: string, email: string, password: string) =>
       apiFetch<{ data: { id: number; name: string; role: string }; message: string }>(
-        "/auth/sign_up", { method: "POST", body: JSON.stringify({ user: { name, email, password } }) }
+        "/auth/sign_up", {
+          method: "POST",
+          body: JSON.stringify({ api_user: { name, email, password, password_confirmation: password } }),
+        }
       ),
+  },
+
+  profile: {
+    show: () => apiFetch<{ data: UserProfile }>("/profile"),
+    update: (body: Partial<Pick<UserProfile, "name" | "email"> & { password?: string }>) =>
+      apiFetch<{ data: UserProfile }>("/profile", {
+        method: "PATCH",
+        body: JSON.stringify({ user: body }),
+      }),
+  },
+
+  bookmarks: {
+    list:   () => apiFetch<{ data: Bookmark[] }>("/bookmarks"),
+    create: (articleId: number) =>
+      apiFetch<{ data: Bookmark }>("/bookmarks", {
+        method: "POST",
+        body: JSON.stringify({ bookmark: { article_id: articleId } }),
+      }),
+    delete: (id: number) => apiFetch<void>(`/bookmarks/${id}`, { method: "DELETE" }),
   },
 
   reports: {

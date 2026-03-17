@@ -1,0 +1,133 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="Профиль">
+  <div class="max-w-2xl mx-auto" id="profile-root">
+    <div class="text-center py-20 text-gray-400">Загрузка...</div>
+  </div>
+
+  <script>
+    const root = document.getElementById("profile-root")!;
+
+    async function loadProfile() {
+      const res = await fetch("/api/profile", { credentials: "include" });
+      if (res.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
+      if (!res.ok) {
+        root.innerHTML = `<p class="text-red-500 text-center py-10">Ошибка загрузки профиля</p>`;
+        return;
+      }
+
+      const { data: user } = await res.json();
+      const bookRes = await fetch("/api/bookmarks", { credentials: "include" });
+      const bookmarks = bookRes.ok ? (await bookRes.json()).data : [];
+
+      render(user, bookmarks);
+    }
+
+    function render(user: { id: number; name: string; email: string; role: string }, bookmarks: Array<{ id: number; article: { id: number; title: string } }>) {
+      root.innerHTML = `
+        <h1 class="text-2xl font-bold text-gray-900 mb-8">Мой профиль</h1>
+
+        <!-- Данные профиля -->
+        <div class="bg-white rounded-xl border border-gray-200 p-6 mb-8">
+          <h2 class="text-lg font-semibold text-gray-800 mb-4">Данные аккаунта</h2>
+          <div id="profile-error" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4 text-sm"></div>
+          <form id="profile-form" class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Имя</label>
+              <input type="text" name="name" value="${escHtml(user.name)}"
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <input type="email" name="email" value="${escHtml(user.email)}"
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Новый пароль <span class="text-gray-400">(оставьте пустым, если не меняете)</span></label>
+              <input type="password" name="password" minlength="6"
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+            </div>
+            <div class="flex items-center gap-3">
+              <button type="submit"
+                class="bg-brand-500 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-brand-700 transition">
+                Сохранить
+              </button>
+              <span class="text-xs text-gray-400">Роль: ${escHtml(user.role)}</span>
+            </div>
+          </form>
+        </div>
+
+        <!-- Закладки -->
+        <div class="bg-white rounded-xl border border-gray-200 p-6">
+          <h2 class="text-lg font-semibold text-gray-800 mb-4">Мои закладки (${bookmarks.length})</h2>
+          <div id="bookmarks-list">
+            ${bookmarks.length === 0
+              ? `<p class="text-gray-500 text-sm">Закладок пока нет.</p>`
+              : bookmarks.map((b: { id: number; article: { id: number; title: string } }) => `
+                <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0" id="bookmark-${b.id}">
+                  <a href="/article/${b.article.id}" class="text-brand-500 hover:underline text-sm">${escHtml(b.article.title)}</a>
+                  <button data-id="${b.id}" class="delete-bookmark text-xs text-red-400 hover:text-red-600 transition">Удалить</button>
+                </div>
+              `).join("")}
+          </div>
+        </div>
+      `;
+
+      // Форма редактирования
+      document.getElementById("profile-form")?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const errEl = document.getElementById("profile-error")!;
+        errEl.classList.add("hidden");
+
+        const fd = new FormData(e.target as HTMLFormElement);
+        const body: Record<string, string> = {
+          name:  fd.get("name") as string,
+          email: fd.get("email") as string,
+        };
+        const pw = fd.get("password") as string;
+        if (pw) body.password = pw;
+
+        const res = await fetch("/api/profile", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ user: body }),
+        });
+
+        if (res.ok) {
+          const { data: updated } = await res.json();
+          (document.querySelector('[name="name"]') as HTMLInputElement).value = updated.name;
+          (document.querySelector('[name="email"]') as HTMLInputElement).value = updated.email;
+          (document.querySelector('[name="password"]') as HTMLInputElement).value = "";
+        } else {
+          const j = await res.json();
+          const errors: string[] = j.errors ?? [];
+          errEl.textContent = errors.join(", ") || (j.error ?? "Ошибка сохранения");
+          errEl.classList.remove("hidden");
+        }
+      });
+
+      // Удаление закладок
+      document.getElementById("bookmarks-list")?.addEventListener("click", async (e) => {
+        const btn = (e.target as HTMLElement).closest(".delete-bookmark") as HTMLButtonElement | null;
+        if (!btn) return;
+        const id = btn.dataset.id!;
+        const res = await fetch(`/api/bookmarks/${id}`, { method: "DELETE", credentials: "include" });
+        if (res.ok) {
+          document.getElementById(`bookmark-${id}`)?.remove();
+        }
+      });
+    }
+
+    function escHtml(s: string) {
+      return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    loadProfile();
+  </script>
+</BaseLayout>

@@ -19,7 +19,14 @@ src/
     section/[slug].astro     # Страница раздела (SSR)
     search.astro             # Поиск (SSR)
     login.astro              # Форма входа
-    admin/index.astro        # Панель управления (заглушка)
+    admin/
+      index.astro            # Панель управления: список статей, удаление
+      articles/
+        new.astro            # Создание статьи
+        [id]/edit.astro      # Редактирование статьи
+    register.astro           # Регистрация
+    profile.astro            # Профиль + закладки
+    admin/index.astro        # (см. выше)
   layouts/
     BaseLayout.astro         # HTML-обёртка: header, footer, meta
   components/
@@ -32,19 +39,24 @@ src/
 
 ## Маршруты
 ```
-/                            → index.astro (главная, список статей)
-/article/:id                 → article/[id].astro (полная статья)
-/section/:slug               → section/[slug].astro (раздел)
-/search?q=...                → search.astro (полнотекстовый поиск)
-/login                       → login.astro
-/admin                       → admin/index.astro
+/                              → index.astro (главная, список статей)
+/article/:id                   → article/[id].astro (полная статья + форма комментария)
+/section/:slug                 → section/[slug].astro (раздел)
+/search?q=...                  → search.astro (полнотекстовый поиск)
+/login                         → login.astro
+/register                      → register.astro
+/profile                       → profile.astro (профиль + закладки)
+/admin                         → admin/index.astro (список статей редактора)
+/admin/articles/new            → admin/articles/new.astro
+/admin/articles/:id/edit       → admin/articles/[id]/edit.astro
 ```
 
 ## Связь с backend
 - Все HTTP-запросы к Rails API в `src/services/api.ts`
 - Base URL: `PUBLIC_API_URL` env var (default: `http://localhost/api`)
-- Аутентификация: JWT в заголовке `Authorization: Bearer <token>`
-- Токен сохраняется в `localStorage` после sign_in
+- Аутентификация: JWT в httpOnly cookie (устанавливается бэкендом через `Set-Cookie`)
+- Браузер отправляет cookie автоматически при `credentials: "include"`
+- Auth-параметры: `api_user: { email, password }` / `api_user: { name, email, password, password_confirmation }` (Devise scope)
 
 ## Запуск
 ```bash

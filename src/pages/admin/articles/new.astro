@@ -1,0 +1,130 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="Новая статья">
+  <div class="max-w-3xl mx-auto">
+    <div class="flex items-center gap-3 mb-8">
+      <a href="/admin" class="text-gray-500 hover:text-brand-500 text-sm">← Панель</a>
+      <span class="text-gray-300">/</span>
+      <h1 class="text-2xl font-bold text-gray-900">Новая статья</h1>
+    </div>
+
+    <div id="error-msg" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4 text-sm"></div>
+
+    <div class="bg-white rounded-xl border border-gray-200 p-8">
+      <form id="article-form" class="space-y-5">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Заголовок</label>
+          <input type="text" name="title" required
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Содержимое</label>
+          <textarea name="content" rows="12" required
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-y"></textarea>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Статус</label>
+            <select name="status"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+              <option value="draft">Черновик</option>
+              <option value="published">Опубликовать</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Раздел</label>
+            <select name="section_id" id="section-select"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+              <option value="">— без раздела —</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Теги <span class="text-gray-400 font-normal">(через запятую)</span></label>
+          <input type="text" name="tag_ids_raw" id="tags-input"
+            placeholder="например: биохимия, ферменты"
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+          <div id="tags-hint" class="mt-1 text-xs text-gray-400"></div>
+        </div>
+        <div class="flex gap-3 pt-2">
+          <button type="submit"
+            class="bg-brand-500 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-brand-700 transition">
+            Создать статью
+          </button>
+          <a href="/admin" class="px-4 py-2 rounded-lg text-sm text-gray-600 border border-gray-300 hover:bg-gray-50 transition">Отмена</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const errorMsg = document.getElementById("error-msg")!;
+    let allTags: Array<{ id: number; name: string }> = [];
+
+    async function init() {
+      const profileRes = await fetch("/api/profile", { credentials: "include" });
+      if (profileRes.status === 401) { window.location.href = "/login"; return; }
+
+      const [sectionsRes, tagsRes] = await Promise.all([
+        fetch("/api/sections", { credentials: "include" }),
+        fetch("/api/tags", { credentials: "include" }),
+      ]);
+
+      if (sectionsRes.ok) {
+        const { data: sections } = await sectionsRes.json();
+        const sel = document.getElementById("section-select")!;
+        sections.forEach((s: { id: number; name: string }) => {
+          const opt = document.createElement("option");
+          opt.value = String(s.id);
+          opt.textContent = s.name;
+          sel.appendChild(opt);
+        });
+      }
+
+      if (tagsRes.ok) {
+        const { data } = await tagsRes.json();
+        allTags = data;
+        document.getElementById("tags-hint")!.textContent =
+          "Доступные: " + allTags.map((t) => t.name).join(", ");
+      }
+    }
+
+    document.getElementById("article-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errorMsg.classList.add("hidden");
+      const fd = new FormData(e.target as HTMLFormElement);
+
+      const rawTags = (fd.get("tag_ids_raw") as string).split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+      const tagIds = allTags.filter((t) => rawTags.includes(t.name.toLowerCase())).map((t) => t.id);
+
+      const sectionId = fd.get("section_id") as string;
+      const body: Record<string, unknown> = {
+        title:   fd.get("title"),
+        content: fd.get("content"),
+        status:  fd.get("status"),
+        tag_ids: tagIds,
+      };
+      if (sectionId) body.section_id = Number(sectionId);
+
+      const res = await fetch("/api/articles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ article: body }),
+      });
+
+      if (res.ok) {
+        window.location.href = "/admin";
+      } else {
+        const j = await res.json();
+        const errors: string[] = j.errors ?? [];
+        errorMsg.textContent = errors.join(", ") || (j.error ?? "Ошибка создания статьи");
+        errorMsg.classList.remove("hidden");
+      }
+    });
+
+    init();
+  </script>
+</BaseLayout>

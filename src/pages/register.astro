@@ -2,15 +2,23 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 ---
 
-<BaseLayout title="Вход в систему">
+<BaseLayout title="Регистрация">
   <div class="max-w-md mx-auto mt-10">
     <div class="bg-white rounded-xl border border-gray-200 p-8 shadow-sm">
-      <h1 class="text-2xl font-bold text-gray-900 mb-6 text-center">Вход в систему</h1>
+      <h1 class="text-2xl font-bold text-gray-900 mb-6 text-center">Регистрация</h1>
 
-      <div id="error-msg" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4 text-sm">
-      </div>
+      <div id="error-msg" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4 text-sm"></div>
 
-      <form id="login-form" class="space-y-4">
+      <form id="register-form" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Имя</label>
+          <input
+            type="text"
+            name="name"
+            required
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+          />
+        </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
           <input
@@ -26,6 +34,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
             type="password"
             name="password"
             required
+            minlength="6"
             class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
           />
         </div>
@@ -33,18 +42,18 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           type="submit"
           class="w-full bg-brand-500 text-white py-2.5 rounded-lg font-medium hover:bg-brand-700 transition"
         >
-          Войти
+          Зарегистрироваться
         </button>
       </form>
 
       <p class="mt-4 text-center text-sm text-gray-500">
-        Нет аккаунта? <a href="/register" class="text-brand-500 hover:underline">Зарегистрироваться</a>
+        Уже есть аккаунт? <a href="/login" class="text-brand-500 hover:underline">Войти</a>
       </p>
     </div>
   </div>
 
   <script>
-    const form = document.getElementById("login-form") as HTMLFormElement;
+    const form = document.getElementById("register-form") as HTMLFormElement;
     const errorMsg = document.getElementById("error-msg") as HTMLDivElement;
 
     form?.addEventListener("submit", async (e) => {
@@ -52,21 +61,26 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       errorMsg.classList.add("hidden");
 
       const data = new FormData(form);
-      const email = data.get("email") as string;
+      const name     = data.get("name") as string;
+      const email    = data.get("email") as string;
       const password = data.get("password") as string;
 
       try {
-        const res = await fetch("/api/auth/sign_in", {
+        const res = await fetch("/api/auth/sign_up", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ api_user: { email, password } }),
+          credentials: "include",
+          body: JSON.stringify({ api_user: { name, email, password, password_confirmation: password } }),
         });
 
         if (res.ok) {
           window.location.href = "/";
         } else {
           const body = await res.json();
-          errorMsg.textContent = body.error ?? "Неверный email или пароль";
+          const errors: string[] = body.errors ?? [];
+          errorMsg.textContent = errors.length
+            ? errors.join(", ")
+            : (body.error ?? "Ошибка регистрации");
           errorMsg.classList.remove("hidden");
         }
       } catch {
