@@ -54,6 +54,13 @@ src/
 /admin/articles/:id/edit       → admin/articles/[id]/edit.astro
 ```
 
+## Локализация (i18n)
+- `src/i18n/translations.ts` — все строки UI для `ru` и `en`: nav, footer, toast, common, notFound, search, sections, article, auth, index, profile
+- `src/i18n/index.ts` — `getLang(cookies): Lang` (читает cookie `lang`), `getT(lang): T`
+- SSR-страницы: `const lang = getLang(Astro.cookies); const t = getT(lang)` в frontmatter
+- Клиентские скрипты: читают `document.documentElement.dataset.lang` (установлен в `BaseLayout.astro`)
+- Переключатель: кнопка в футере, пишет cookie `lang`, перезагружает страницу
+
 ## Связь с backend
 - Все HTTP-запросы к Rails API в `src/services/api.ts`
 - Base URL: `PUBLIC_API_URL` env var (default: `http://localhost/api`)

@@ -1,5 +1,16 @@
 # MEMORY.md — biochem-frontend
 
+## 2026-03-20 — Локализация profile.astro
+
+### Изменённые файлы
+- `src/i18n/translations.ts` — добавлена секция `profile` (ru + en): title, accountSection, name, email, newPassword, passwordHint, save, role, bookmarksSection, noBookmarks, removeBookmark, saveSuccess, loadError, saveError, roles (guest/member/editor/admin)
+- `src/pages/profile.astro` — добавлен SSR frontmatter (`getLang`/`getT`), заголовок через `t.profile.title`, loading через `t.common.loading`; в клиентском скрипте все строки вынесены в объект `L` по `dataset.lang`
+
+### Итог
+- TypeScript: 0 ошибок
+
+---
+
 ## 2026-03-18 — Локализация RU/EN, фикс share button, переключатель языка
 
 ### Новые файлы

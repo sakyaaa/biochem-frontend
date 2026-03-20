@@ -1,14 +1,53 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+import { getLang, getT } from "../i18n/index";
+
+const lang = getLang(Astro.cookies);
+const t    = getT(lang);
 ---
 
-<BaseLayout title="Профиль">
+<BaseLayout title={t.profile.title}>
   <div class="max-w-2xl mx-auto" id="profile-root">
-    <div class="text-center py-20 text-gray-400">Загрузка...</div>
+    <div class="text-center py-20 text-gray-400">{t.common.loading}</div>
   </div>
 
   <script>
     const root = document.getElementById("profile-root")!;
+    const lang = document.documentElement.dataset.lang ?? "ru";
+
+    const L = lang === "en" ? {
+      title:          "My profile",
+      accountSection: "Account details",
+      name:           "Name",
+      email:          "Email",
+      newPassword:    "New password",
+      passwordHint:   "(leave blank to keep unchanged)",
+      save:           "Save",
+      role:           "Role:",
+      bookmarksSection: "My bookmarks",
+      noBookmarks:    "No bookmarks yet.",
+      removeBookmark: "Remove",
+      saveSuccess:    "Profile saved successfully",
+      loadError:      "Failed to load profile",
+      saveError:      "Save error",
+      roles: { guest: "Guest", member: "Member", editor: "Editor", admin: "Administrator" },
+    } : {
+      title:          "Мой профиль",
+      accountSection: "Данные аккаунта",
+      name:           "Имя",
+      email:          "Email",
+      newPassword:    "Новый пароль",
+      passwordHint:   "(оставьте пустым, если не меняете)",
+      save:           "Сохранить",
+      role:           "Роль:",
+      bookmarksSection: "Мои закладки",
+      noBookmarks:    "Закладок пока нет.",
+      removeBookmark: "Удалить",
+      saveSuccess:    "Профиль успешно сохранён",
+      loadError:      "Ошибка загрузки профиля",
+      saveError:      "Ошибка сохранения",
+      roles: { guest: "Гость", member: "Участник", editor: "Редактор", admin: "Администратор" },
+    };
 
     async function loadProfile() {
       const res = await fetch("/api/profile", { credentials: "include" });
@@ -17,7 +56,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         return;
       }
       if (!res.ok) {
-        root.innerHTML = `<p class="text-red-500 text-center py-10">Ошибка загрузки профиля</p>`;
+        root.innerHTML = `<p class="text-red-500 text-center py-10">${L.loadError}</p>`;
         return;
       }
 
@@ -30,48 +69,48 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 
     function render(user: { id: number; name: string; email: string; role: string }, bookmarks: Array<{ id: number; article: { id: number; title: string } }>) {
       root.innerHTML = `
-        <h1 class="text-2xl font-bold text-gray-900 mb-8">Мой профиль</h1>
+        <h1 class="text-2xl font-bold text-gray-900 mb-8">${L.title}</h1>
 
         <!-- Данные профиля -->
         <div class="bg-white rounded-xl border border-gray-200 p-6 mb-8">
-          <h2 class="text-lg font-semibold text-gray-800 mb-4">Данные аккаунта</h2>
+          <h2 class="text-lg font-semibold text-gray-800 mb-4">${L.accountSection}</h2>
           <div id="profile-error" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm flex gap-2.5"></div>
           <form id="profile-form" class="space-y-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Имя</label>
+              <label class="block text-sm font-medium text-gray-700 mb-1">${L.name}</label>
               <input type="text" name="name" value="${escHtml(user.name)}"
                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <label class="block text-sm font-medium text-gray-700 mb-1">${L.email}</label>
               <input type="email" name="email" value="${escHtml(user.email)}"
                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Новый пароль <span class="text-gray-400">(оставьте пустым, если не меняете)</span></label>
+              <label class="block text-sm font-medium text-gray-700 mb-1">${L.newPassword} <span class="text-gray-400 font-normal">${L.passwordHint}</span></label>
               <input type="password" name="password" minlength="6"
                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
             </div>
             <div class="flex items-center gap-3">
               <button type="submit"
                 class="bg-brand-500 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-brand-700 transition">
-                Сохранить
+                ${L.save}
               </button>
-              <span class="text-xs text-gray-400">Роль: ${roleLabel[user.role] ?? escHtml(user.role)}</span>
+              <span class="text-xs text-gray-400">${L.role} ${L.roles[user.role as keyof typeof L.roles] ?? escHtml(user.role)}</span>
             </div>
           </form>
         </div>
 
         <!-- Закладки -->
         <div class="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 class="text-lg font-semibold text-gray-800 mb-4">Мои закладки (${bookmarks.length})</h2>
+          <h2 class="text-lg font-semibold text-gray-800 mb-4">${L.bookmarksSection} (${bookmarks.length})</h2>
           <div id="bookmarks-list">
             ${bookmarks.length === 0
-              ? `<p class="text-gray-500 text-sm">Закладок пока нет.</p>`
+              ? `<p class="text-gray-500 text-sm">${L.noBookmarks}</p>`
               : bookmarks.map((b: { id: number; article: { id: number; title: string } }) => `
                 <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0" id="bookmark-${b.id}">
                   <a href="/article/${b.article.id}" class="text-brand-500 hover:underline text-sm">${escHtml(b.article.title)}</a>
-                  <button data-id="${b.id}" class="delete-bookmark text-xs text-red-400 hover:text-red-600 transition">Удалить</button>
+                  <button data-id="${b.id}" class="delete-bookmark text-xs text-red-400 hover:text-red-600 transition">${L.removeBookmark}</button>
                 </div>
               `).join("")}
           </div>
@@ -105,10 +144,10 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           (document.querySelector('[name="email"]') as HTMLInputElement).value = updated.email;
           (document.querySelector('[name="password"]') as HTMLInputElement).value = "";
           errEl.classList.add("hidden");
-          showSuccess(errEl.parentElement!, "Профиль успешно сохранён");
+          showSuccess(errEl.parentElement!, L.saveSuccess);
         } else {
           const j = await res.json();
-          showErrors(errEl, j, "Ошибка сохранения");
+          showErrors(errEl, j, L.saveError);
         }
       });
 
@@ -123,13 +162,6 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         }
       });
     }
-
-    const roleLabel: Record<string, string> = {
-      guest:  "Гость",
-      member: "Участник",
-      editor: "Редактор",
-      admin:  "Администратор",
-    };
 
     function escHtml(s: string) {
       return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
