@@ -7,7 +7,7 @@ const t    = getT(lang);
 ---
 
 <BaseLayout title={t.profile.title}>
-  <div class="max-w-2xl mx-auto" id="profile-root">
+  <div class="max-w-4xl mx-auto" id="profile-root">
     <div class="text-center py-20 text-gray-400">{t.common.loading}</div>
   </div>
 
@@ -21,9 +21,8 @@ const t    = getT(lang);
       name:           "Name",
       email:          "Email",
       newPassword:    "New password",
-      passwordHint:   "(leave blank to keep unchanged)",
-      save:           "Save",
-      role:           "Role:",
+      passwordHint:   "Leave blank to keep unchanged",
+      save:           "Save changes",
       bookmarksSection: "My bookmarks",
       noBookmarks:    "No bookmarks yet.",
       removeBookmark: "Remove",
@@ -37,9 +36,8 @@ const t    = getT(lang);
       name:           "Имя",
       email:          "Email",
       newPassword:    "Новый пароль",
-      passwordHint:   "(оставьте пустым, если не меняете)",
-      save:           "Сохранить",
-      role:           "Роль:",
+      passwordHint:   "Оставьте пустым, если не меняете",
+      save:           "Сохранить изменения",
       bookmarksSection: "Мои закладки",
       noBookmarks:    "Закладок пока нет.",
       removeBookmark: "Удалить",
@@ -49,75 +47,162 @@ const t    = getT(lang);
       roles: { guest: "Гость", member: "Участник", editor: "Редактор", admin: "Администратор" },
     };
 
+    const roleBadge: Record<string, string> = {
+      admin:  "bg-purple-100 text-purple-700",
+      editor: "bg-brand-100 text-brand-700",
+      member: "bg-green-100 text-green-700",
+      guest:  "bg-gray-100 text-gray-600",
+    };
+
     async function loadProfile() {
       const res = await fetch("/api/profile", { credentials: "include" });
-      if (res.status === 401) {
-        window.location.href = "/login";
-        return;
-      }
+      if (res.status === 401) { window.location.href = "/login"; return; }
       if (!res.ok) {
         root.innerHTML = `<p class="text-red-500 text-center py-10">${L.loadError}</p>`;
         return;
       }
-
       const { data: user } = await res.json();
-      const bookRes = await fetch("/api/bookmarks", { credentials: "include" });
-      const bookmarks = bookRes.ok ? (await bookRes.json()).data : [];
-
-      render(user, bookmarks);
+      const isEditor = user.role === "editor" || user.role === "admin";
+      const [bookRes, artRes] = await Promise.all([
+        fetch("/api/bookmarks", { credentials: "include" }),
+        isEditor ? fetch("/api/articles?own=true&per_page=1", { credentials: "include" }) : Promise.resolve(null),
+      ]);
+      const bookmarks  = bookRes.ok ? (await bookRes.json()).data : [];
+      const artCount   = artRes && artRes.ok ? ((await artRes.json()).meta?.total_count ?? 0) : null;
+      render(user, bookmarks, artCount);
     }
 
-    function render(user: { id: number; name: string; email: string; role: string }, bookmarks: Array<{ id: number; article: { id: number; title: string } }>) {
-      root.innerHTML = `
-        <h1 class="text-2xl font-bold text-gray-900 mb-8">${L.title}</h1>
+    function initials(name: string) {
+      return name.split(" ").slice(0, 2).map(w => w[0]?.toUpperCase() ?? "").join("");
+    }
 
-        <!-- Данные профиля -->
-        <div class="bg-white rounded-xl border border-gray-200 p-6 mb-8">
-          <h2 class="text-lg font-semibold text-gray-800 mb-4">${L.accountSection}</h2>
-          <div id="profile-error" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm flex gap-2.5"></div>
-          <form id="profile-form" class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">${L.name}</label>
-              <input type="text" name="name" value="${escHtml(user.name)}"
-                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">${L.email}</label>
-              <input type="email" name="email" value="${escHtml(user.email)}"
-                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">${L.newPassword} <span class="text-gray-400 font-normal">${L.passwordHint}</span></label>
-              <input type="password" name="password" minlength="6"
-                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
-            </div>
-            <div class="flex items-center gap-3">
-              <button type="submit"
-                class="bg-brand-500 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-brand-700 transition">
-                ${L.save}
-              </button>
-              <span class="text-xs text-gray-400">${L.role} ${L.roles[user.role as keyof typeof L.roles] ?? escHtml(user.role)}</span>
-            </div>
-          </form>
+    function render(
+      user: { id: number; name: string; email: string; role: string; created_at?: string },
+      bookmarks: Array<{ id: number; article: { id: number; title: string } }>,
+      artCount: number | null
+    ) {
+      const roleLabel = L.roles[user.role as keyof typeof L.roles] ?? escHtml(user.role);
+      const badgeCls  = roleBadge[user.role] ?? "bg-gray-100 text-gray-600";
+      const ini       = initials(user.name);
+
+      const memberSince = user.created_at
+        ? new Date(user.created_at).toLocaleDateString(lang === "en" ? "en-US" : "ru-RU", { month: "long", year: "numeric" })
+        : "—";
+
+      const statCards = [
+        {
+          icon: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>`,
+          label: lang === "en" ? "Bookmarks" : "Закладки",
+          value: String(bookmarks.length),
+          color: "text-brand-600",
+        },
+        {
+          icon: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>`,
+          label: lang === "en" ? "Member since" : "На портале с",
+          value: memberSince,
+          color: "text-gray-700",
+        },
+        ...(artCount !== null ? [{
+          icon: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>`,
+          label: lang === "en" ? "My articles" : "Мои статьи",
+          value: String(artCount),
+          color: "text-green-600",
+        }] : []),
+      ];
+
+      root.innerHTML = `
+        <!-- Шапка профиля -->
+        <div class="bg-white rounded-2xl border border-gray-200 p-6 mb-4 flex items-center gap-5">
+          <div class="w-16 h-16 rounded-full bg-brand-500 flex items-center justify-center text-white text-xl font-bold flex-shrink-0 select-none">
+            ${escHtml(ini)}
+          </div>
+          <div class="flex-1 min-w-0">
+            <h1 class="text-xl font-bold text-gray-900 truncate">${escHtml(user.name)}</h1>
+            <p class="text-sm text-gray-400 truncate">${escHtml(user.email)}</p>
+          </div>
+          <span class="px-3 py-1 rounded-full text-xs font-semibold flex-shrink-0 ${badgeCls}">${roleLabel}</span>
         </div>
 
-        <!-- Закладки -->
-        <div class="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 class="text-lg font-semibold text-gray-800 mb-4">${L.bookmarksSection} (${bookmarks.length})</h2>
-          <div id="bookmarks-list">
-            ${bookmarks.length === 0
-              ? `<p class="text-gray-500 text-sm">${L.noBookmarks}</p>`
-              : bookmarks.map((b: { id: number; article: { id: number; title: string } }) => `
-                <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0" id="bookmark-${b.id}">
-                  <a href="/article/${b.article.id}" class="text-brand-500 hover:underline text-sm">${escHtml(b.article.title)}</a>
-                  <button data-id="${b.id}" class="delete-bookmark text-xs text-red-400 hover:text-red-600 transition">${L.removeBookmark}</button>
-                </div>
-              `).join("")}
+        <!-- Карточки статистики -->
+        <div class="grid grid-cols-${statCards.length} gap-4 mb-4">
+          ${statCards.map(c => `
+            <div class="bg-white rounded-xl border border-gray-200 px-5 py-4 flex items-center gap-3">
+              <div class="w-9 h-9 rounded-lg bg-gray-50 flex items-center justify-center flex-shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">${c.icon}</svg>
+              </div>
+              <div class="min-w-0">
+                <p class="text-xs text-gray-400 leading-tight">${c.label}</p>
+                <p class="text-lg font-bold ${c.color} leading-tight truncate">${c.value}</p>
+              </div>
+            </div>
+          `).join("")}
+        </div>
+
+        <!-- Основной контент: форма + закладки -->
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-6">
+
+          <!-- Форма (3 колонки) -->
+          <div class="md:col-span-3 bg-white rounded-2xl border border-gray-200 p-6">
+            <h2 class="text-base font-semibold text-gray-800 mb-5">${L.accountSection}</h2>
+            <div id="profile-error" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm flex gap-2.5"></div>
+            <form id="profile-form" class="space-y-4">
+              <div>
+                <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">${L.name}</label>
+                <input type="text" name="name" value="${escHtml(user.name)}" required
+                  class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-gray-50 focus:bg-white transition" />
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">${L.email}</label>
+                <input type="email" name="email" value="${escHtml(user.email)}" required
+                  class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-gray-50 focus:bg-white transition" />
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">${L.newPassword}</label>
+                <input type="password" name="password" minlength="6" placeholder="${L.passwordHint}"
+                  class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-gray-50 focus:bg-white transition placeholder:text-gray-300" />
+              </div>
+              <div class="pt-1">
+                <button type="submit"
+                  class="w-full bg-brand-500 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-brand-700 transition">
+                  ${L.save}
+                </button>
+              </div>
+            </form>
           </div>
+
+          <!-- Закладки (2 колонки) -->
+          <div class="md:col-span-2 bg-white rounded-2xl border border-gray-200 p-6 flex flex-col">
+            <h2 class="text-base font-semibold text-gray-800 mb-5">
+              ${L.bookmarksSection}
+              <span class="ml-1.5 text-xs font-normal text-gray-400">${bookmarks.length}</span>
+            </h2>
+            <div id="bookmarks-list" class="flex-1 space-y-0 overflow-y-auto">
+              ${bookmarks.length === 0
+                ? `<div class="flex flex-col items-center justify-center py-10 text-gray-300">
+                     <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+                     </svg>
+                     <p class="text-sm">${L.noBookmarks}</p>
+                   </div>`
+                : bookmarks.map((b: { id: number; article: { id: number; title: string } }) => `
+                    <div class="group flex items-start gap-2 py-2.5 border-b border-gray-100 last:border-0" id="bookmark-${b.id}">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 mt-0.5 text-brand-400 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+                      </svg>
+                      <a href="/article/${b.article.id}" class="flex-1 text-sm text-gray-700 hover:text-brand-500 transition leading-snug line-clamp-2">${escHtml(b.article.title)}</a>
+                      <button data-id="${b.id}" class="delete-bookmark flex-shrink-0 opacity-0 group-hover:opacity-100 transition text-gray-300 hover:text-red-500 ml-1" title="${L.removeBookmark}">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                      </button>
+                    </div>
+                  `).join("")}
+            </div>
+          </div>
+
         </div>
       `;
 
-      // Форма редактирования
       document.getElementById("profile-form")?.addEventListener("submit", async (e) => {
         e.preventDefault();
         const errEl = document.getElementById("profile-error")!;
@@ -145,13 +230,17 @@ const t    = getT(lang);
           (document.querySelector('[name="password"]') as HTMLInputElement).value = "";
           errEl.classList.add("hidden");
           showSuccess(errEl.parentElement!, L.saveSuccess);
+          // Обновить имя и инициалы в шапке
+          const ini = initials(updated.name);
+          document.querySelector("#profile-root .bg-brand-500")!.textContent = ini;
+          (document.querySelector("#profile-root h1") as HTMLElement).textContent = updated.name;
+          (document.querySelector("#profile-root p.text-gray-400") as HTMLElement).textContent = updated.email;
         } else {
           const j = await res.json();
           showErrors(errEl, j, L.saveError);
         }
       });
 
-      // Удаление закладок
       document.getElementById("bookmarks-list")?.addEventListener("click", async (e) => {
         const btn = (e.target as HTMLElement).closest(".delete-bookmark") as HTMLButtonElement | null;
         if (!btn) return;
@@ -159,6 +248,15 @@ const t    = getT(lang);
         const res = await fetch(`/api/bookmarks/${id}`, { method: "DELETE", credentials: "include" });
         if (res.ok) {
           document.getElementById(`bookmark-${id}`)?.remove();
+          const list = document.getElementById("bookmarks-list");
+          if (list && list.querySelectorAll("[id^='bookmark-']").length === 0) {
+            list.innerHTML = `<div class="flex flex-col items-center justify-center py-10 text-gray-300">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+              </svg>
+              <p class="text-sm">${L.noBookmarks}</p>
+            </div>`;
+          }
         }
       });
     }

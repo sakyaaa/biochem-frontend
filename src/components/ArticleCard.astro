@@ -12,7 +12,14 @@ const date = new Date(article.created_at).toLocaleDateString("ru-RU", {
   month: "long",
   year: "numeric",
 });
-const excerpt = article.content.replace(/<[^>]*>/g, "").substring(0, 400);
+const excerpt = article.content
+  .replace(/\$\$[\s\S]*?\$\$/g, " [формула] ")
+  .replace(/\$[^$\n]+?\$/g, " [формула] ")
+  .replace(/<[^>]*>/g, " ")
+  .replace(/\s+/g, " ")
+  .replace(/ \[формула\]( \[формула\])*/g, " [формула]")
+  .trim()
+  .substring(0, 300);
 ---
 
 <article class="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow">

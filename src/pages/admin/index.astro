@@ -6,12 +6,20 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
   <div class="max-w-4xl mx-auto">
     <div class="flex items-center justify-between mb-8">
       <h1 class="text-2xl font-bold text-gray-900">Панель управления</h1>
-      <a
-        href="/admin/articles/new"
-        class="bg-brand-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-brand-700 transition"
-      >
-        + Новая статья
-      </a>
+      <div class="flex items-center gap-3">
+        <a
+          href="/admin/stats"
+          class="border border-gray-300 text-gray-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
+        >
+          Статистика
+        </a>
+        <a
+          href="/admin/articles/new"
+          class="bg-brand-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-brand-700 transition"
+        >
+          + Новая статья
+        </a>
+      </div>
     </div>
 
     <div id="stats-row" class="grid grid-cols-3 gap-4 mb-6"></div>
@@ -136,7 +144,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
             <tbody id="articles-tbody">
               ${articles.map((a) => `
                 <tr class="border-b border-gray-100 last:border-0 hover:bg-gray-50" id="article-row-${a.id}">
-                  <td class="py-3 pr-4 font-medium text-gray-800">${escHtml(a.title)}</td>
+                  <td class="py-3 pr-4 font-medium text-gray-800"><a href="/article/${a.id}" class="hover:text-brand-500 transition">${escHtml(a.title)}</a></td>
                   <td class="py-3 pr-4">
                     <span class="px-2 py-0.5 rounded text-xs font-medium ${a.status === "published" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}">
                       ${a.status === "published" ? "Опубликовано" : "Черновик"}

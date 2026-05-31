@@ -1,0 +1,215 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="Статистика">
+  <div class="max-w-4xl mx-auto">
+    <div class="flex items-center gap-3 mb-8">
+      <a href="/admin" class="text-gray-500 hover:text-brand-500 text-sm">← Панель</a>
+      <span class="text-gray-300">/</span>
+      <h1 class="text-2xl font-bold text-gray-900">Статистика</h1>
+    </div>
+
+    <div id="summary-cards" class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8"></div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="bg-white rounded-xl border border-gray-200 p-6">
+        <h2 class="text-base font-semibold text-gray-800 mb-4">Топ-10 статей по просмотрам</h2>
+        <div id="top-articles" class="text-sm text-gray-500">Загрузка...</div>
+      </div>
+
+      <div class="bg-white rounded-xl border border-gray-200 p-6">
+        <h2 class="text-base font-semibold text-gray-800 mb-4">Статьи по разделам</h2>
+        <div id="sections-chart" class="text-sm text-gray-500">Загрузка...</div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl border border-gray-200 p-6 mt-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-base font-semibold text-gray-800">Популярные за период</h2>
+        <div class="flex items-center gap-2 text-sm">
+          <label class="text-gray-500">С</label>
+          <input type="date" id="date-from" class="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+          <label class="text-gray-500">по</label>
+          <input type="date" id="date-to" class="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+          <button id="apply-period" class="bg-brand-500 text-white px-3 py-1 rounded-md text-sm hover:bg-brand-700 transition">Применить</button>
+        </div>
+      </div>
+      <div id="period-articles" class="text-sm text-gray-500">Загрузка...</div>
+    </div>
+  </div>
+
+  <script>
+    async function init() {
+      const profileRes = await fetch("/api/profile", { credentials: "include" });
+      if (profileRes.status === 401) { window.location.href = "/login"; return; }
+      const { data: user } = await profileRes.json();
+      if (user.role === "guest" || user.role === "member") {
+        document.querySelector(".max-w-4xl")!.innerHTML =
+          `<p class="text-yellow-700 p-8">Нет доступа. Доступно только для редакторов и администраторов.</p>`;
+        return;
+      }
+
+      await Promise.all([loadSummary(), loadTopArticles(), loadSections(), loadPeriod()]);
+      setupDateFilter();
+    }
+
+    async function loadSummary() {
+      const [allRes, pubRes, draftRes, topRes] = await Promise.all([
+        fetch("/api/articles?own=true&per_page=1", { credentials: "include" }),
+        fetch("/api/articles?own=true&per_page=1&status=published", { credentials: "include" }),
+        fetch("/api/articles?own=true&per_page=1&status=draft", { credentials: "include" }),
+        fetch("/api/reports/popular"),
+      ]);
+
+      const [allJson, pubJson, draftJson, topJson] = await Promise.all([
+        allRes.json(), pubRes.json(), draftRes.json(), topRes.json(),
+      ]);
+
+      const totalViews = (topJson.data as Array<{ views_count: number }>)
+        .reduce((sum: number, a) => sum + (a.views_count || 0), 0);
+
+      const cards = [
+        { label: "Всего статей",    value: allJson.meta?.total_count   ?? 0, color: "text-brand-600",  bg: "bg-brand-50"  },
+        { label: "Опубликованных",  value: pubJson.meta?.total_count   ?? 0, color: "text-green-600",  bg: "bg-green-50"  },
+        { label: "Черновиков",      value: draftJson.meta?.total_count ?? 0, color: "text-yellow-600", bg: "bg-yellow-50" },
+        { label: "Просмотров (топ-10)", value: totalViews,               color: "text-purple-600", bg: "bg-purple-50" },
+      ];
+
+      document.getElementById("summary-cards")!.innerHTML = cards.map(c => `
+        <div class="${c.bg} rounded-xl border border-gray-100 p-5">
+          <p class="text-xs text-gray-500 mb-1">${c.label}</p>
+          <p class="text-3xl font-bold ${c.color}">${c.value}</p>
+        </div>
+      `).join("");
+    }
+
+    async function loadTopArticles() {
+      const res = await fetch("/api/articles?sort=views&per_page=10&status=published");
+      if (!res.ok) { document.getElementById("top-articles")!.textContent = "Ошибка загрузки"; return; }
+      const { data: articles } = await res.json();
+
+      if (!articles.length) {
+        document.getElementById("top-articles")!.textContent = "Нет данных";
+        return;
+      }
+
+      const maxViews = Math.max(...articles.map((a: { views_count: number }) => a.views_count || 1));
+      document.getElementById("top-articles")!.innerHTML = articles.map((a: { id: number; title: string; views_count: number }, i: number) => {
+        const pct = Math.round(((a.views_count || 0) / maxViews) * 100);
+        return `
+          <div class="mb-3">
+            <div class="flex items-center justify-between mb-0.5">
+              <a href="/article/${a.id}" class="text-gray-700 hover:text-brand-500 transition truncate max-w-[80%]">
+                <span class="text-gray-400 mr-1">${i + 1}.</span>${escHtml(a.title)}
+              </a>
+              <span class="text-xs text-gray-500 ml-2 flex-shrink-0">${a.views_count ?? 0}</span>
+            </div>
+            <div class="h-1.5 rounded bg-gray-100 overflow-hidden">
+              <div class="h-full rounded bg-brand-500" style="width:${pct}%"></div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    async function loadSections() {
+      const [sectRes, artRes] = await Promise.all([
+        fetch("/api/sections"),
+        fetch("/api/articles?status=published&per_page=100"),
+      ]);
+      if (!sectRes.ok || !artRes.ok) { document.getElementById("sections-chart")!.textContent = "Ошибка загрузки"; return; }
+
+      const { data: sections } = await sectRes.json();
+      const { data: articles } = await artRes.json();
+
+      const counts: Record<string, number> = {};
+      let noSection = 0;
+      for (const a of articles) {
+        if (a.section) counts[a.section.name] = (counts[a.section.name] || 0) + 1;
+        else noSection++;
+      }
+      if (noSection > 0) counts["Без раздела"] = noSection;
+
+      const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+      if (!entries.length) { document.getElementById("sections-chart")!.textContent = "Нет данных"; return; }
+
+      const total = entries.reduce((s, [, v]) => s + v, 0);
+      const colors = ["bg-brand-500", "bg-green-400", "bg-yellow-400", "bg-purple-400", "bg-pink-400", "bg-indigo-400", "bg-teal-400"];
+
+      document.getElementById("sections-chart")!.innerHTML = entries.map(([name, count], i) => {
+        const pct = Math.round((count / total) * 100);
+        return `
+          <div class="flex items-center gap-3 mb-2.5">
+            <div class="w-2.5 h-2.5 rounded-full flex-shrink-0 ${colors[i % colors.length]}"></div>
+            <span class="text-gray-700 truncate flex-1">${escHtml(name)}</span>
+            <span class="text-xs text-gray-400">${count} (${pct}%)</span>
+          </div>
+        `;
+      }).join("") + `
+        <div class="mt-4 h-3 rounded-full overflow-hidden flex">
+          ${entries.map(([, count], i) => {
+            const pct = Math.round((count / total) * 100);
+            return `<div class="h-full ${colors[i % colors.length]}" style="width:${pct}%" title="${count}"></div>`;
+          }).join("")}
+        </div>
+      `;
+    }
+
+    async function loadPeriod(from?: string, to?: string) {
+      const params = new URLSearchParams();
+      if (from) params.set("from", from);
+      if (to)   params.set("to",   to);
+
+      const res = await fetch(`/api/reports/popular?${params}`);
+      if (!res.ok) { document.getElementById("period-articles")!.textContent = "Ошибка загрузки"; return; }
+      const { data: articles, meta } = await res.json();
+
+      if (!articles.length) {
+        document.getElementById("period-articles")!.innerHTML = `<p class="text-gray-400">Нет данных за выбранный период</p>`;
+        return;
+      }
+
+      const maxViews = Math.max(...articles.map((a: { period_views: number }) => a.period_views || 1));
+      document.getElementById("period-articles")!.innerHTML = `
+        <div class="space-y-2">
+          ${articles.map((a: { id: number; title: string; period_views: number }, i: number) => {
+            const pct = Math.round(((a.period_views || 0) / maxViews) * 100);
+            return `
+              <div>
+                <div class="flex items-center justify-between mb-0.5">
+                  <a href="/article/${a.id}" class="text-gray-700 hover:text-brand-500 transition truncate max-w-[80%]">
+                    <span class="text-gray-400 mr-1">${i + 1}.</span>${escHtml(a.title)}
+                  </a>
+                  <span class="text-xs text-gray-500 ml-2 flex-shrink-0">${a.period_views} просм.</span>
+                </div>
+                <div class="h-1.5 rounded bg-gray-100 overflow-hidden">
+                  <div class="h-full rounded bg-purple-400" style="width:${pct}%"></div>
+                </div>
+              </div>
+            `;
+          }).join("")}
+        </div>
+      `;
+    }
+
+    function setupDateFilter() {
+      const now = new Date();
+      const from = new Date(now); from.setDate(now.getDate() - 30);
+      const toInput   = document.getElementById("date-to")   as HTMLInputElement;
+      const fromInput = document.getElementById("date-from") as HTMLInputElement;
+      toInput.value   = now.toISOString().slice(0, 10);
+      fromInput.value = from.toISOString().slice(0, 10);
+
+      document.getElementById("apply-period")?.addEventListener("click", () => {
+        loadPeriod(fromInput.value || undefined, toInput.value || undefined);
+      });
+    }
+
+    function escHtml(s: string) {
+      return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    init();
+  </script>
+</BaseLayout>
